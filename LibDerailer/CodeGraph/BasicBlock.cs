@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Gee.External.Capstone.Arm;
+using LibDerailer.CodeGraph.Nodes;
 
 namespace LibDerailer.CodeGraph
 {
@@ -10,14 +12,17 @@ namespace LibDerailer.CodeGraph
     {
         public uint Address { get; }
 
+        public ArmConditionCode BlockCondition { get; }
+
         public List<Instruction> Instructions { get; } = new List<Instruction>();
 
         public List<BasicBlock> Predecessors { get; } = new List<BasicBlock>();
         public List<BasicBlock> Successors   { get; } = new List<BasicBlock>();
 
-        public BasicBlock(uint address)
+        public BasicBlock(uint address, ArmConditionCode blockCondition = ArmConditionCode.Invalid)
         {
-            Address = address;
+            Address        = address;
+            BlockCondition = blockCondition;
         }
 
         public int CompareTo(BasicBlock other)
@@ -27,6 +32,11 @@ namespace LibDerailer.CodeGraph
             if (ReferenceEquals(null, other))
                 return 1;
             return Address.CompareTo(other.Address);
+        }
+
+        public Instruction GetLastDef(Variable variable)
+        {
+            return Instructions.FindLast(i => i.VariableDefs.Contains(variable));
         }
     }
 }

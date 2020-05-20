@@ -46,13 +46,17 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CodeGraph\ArmMachineInstruction.cs" />
+    <Compile Include="CodeGraph\Nodes\ArmMachineInstruction.cs" />
+    <Compile Include="CodeGraph\ArmUtil.cs" />
     <Compile Include="CodeGraph\BasicBlock.cs" />
     <Compile Include="CodeGraph\Disassembler.cs" />
     <Compile Include="CodeGraph\Function.cs" />
-    <Compile Include="CodeGraph\Instruction.cs" />
+    <Compile Include="CodeGraph\Nodes\FunctionEntrance.cs" />
+    <Compile Include="CodeGraph\Nodes\Instruction.cs" />
+    <Compile Include="CodeGraph\Nodes\LoadConstant.cs" />
     <Compile Include="CodeGraph\Variable.cs" />
     <Compile Include="CodeGraph\VariableLocation.cs" />
+    <Compile Include="IO\IOUtil.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

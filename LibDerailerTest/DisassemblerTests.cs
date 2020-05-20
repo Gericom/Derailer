@@ -19,7 +19,7 @@ namespace LibDerailerTest
                 0x03, 0x00, 0xA0, 0xE1, 0x1E, 0xFF, 0x2F, 0xE1, 0x10, 0xAA, 0x17, 0x02
             };
             var func = Disassembler.DisassembleArm(code, 0x02059C04, ArmDisassembleMode.Arm);
-            Assert.AreEqual(3, func.BasicBlocks.Count);
+            Assert.AreEqual(4, func.BasicBlocks.Count);
         }
 
         [TestMethod]
