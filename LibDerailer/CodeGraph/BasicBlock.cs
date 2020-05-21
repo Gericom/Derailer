@@ -12,6 +12,7 @@ namespace LibDerailer.CodeGraph
     {
         public uint Address { get; }
 
+        public Instruction BlockConditionInstruction { get; set; }
         public ArmConditionCode BlockCondition { get; }
 
         public List<Instruction> Instructions { get; } = new List<Instruction>();
@@ -37,6 +38,22 @@ namespace LibDerailer.CodeGraph
         public Instruction GetLastDef(Variable variable)
         {
             return Instructions.FindLast(i => i.VariableDefs.Contains(variable));
+        }
+
+        public void MergeAppend(BasicBlock b)
+        {
+            var prevBlock = this;
+            var nextBlock = b;
+            prevBlock.Instructions.AddRange(nextBlock.Instructions);
+            prevBlock.Successors.Remove(nextBlock);
+            foreach (var successor in nextBlock.Successors)
+            {
+                if (!prevBlock.Successors.Contains(successor))
+                    prevBlock.Successors.Add(successor);
+                successor.Predecessors.Remove(nextBlock);
+                if (!successor.Predecessors.Contains(prevBlock))
+                    successor.Predecessors.Add(prevBlock);
+            }
         }
     }
 }

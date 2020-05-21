@@ -12,15 +12,35 @@ namespace LibDerailer.CodeGraph
         public uint   Address { get; }
         public string Name    { get; }
 
-        public List<BasicBlock> BasicBlocks    { get; } = new List<BasicBlock>();
+        public List<BasicBlock> BasicBlocks { get; } = new List<BasicBlock>();
 
-        public int StackOffset { get; }
-        public List<Variable>   StackVariables { get; } = new List<Variable>();
+        public Variable[] MachineRegisterVariables { get; }
+
+        public int            StackOffset    { get; }
+        public List<Variable> StackVariables { get; } = new List<Variable>();
 
         public Function(uint address, int stackOffset = 0)
         {
-            Address = address;
+            Address     = address;
             StackOffset = stackOffset;
+
+            MachineRegisterVariables = new Variable[17];
+            for (int i = 0; i < 16; i++)
+                MachineRegisterVariables[i] = new Variable(VariableLocation.Register, $"r{i}", i, 4);
+            MachineRegisterVariables[16] = new Variable(VariableLocation.Register, "cpsr", 16, 4);
+        }
+
+        public string BasicBlockGraphToDot()
+        {
+            int id        = 0;
+            var uniqueIds = new Dictionary<Instruction, int>();
+            var sb        = new StringBuilder();
+            sb.AppendLine("digraph func {");
+            foreach (var block in BasicBlocks)
+                foreach (var successor in block.Successors)
+                    sb.AppendLine($"\"0x{block.Address:X08}\" -> \"0x{successor.Address:X08}\";");
+            sb.AppendLine("}");
+            return sb.ToString();
         }
 
         public string DefUseGraphToDot()

@@ -7,7 +7,10 @@ namespace LibDerailer.CodeGraph.Nodes
         public List<Variable> VariableUses { get; } = new List<Variable>();
         public List<Variable> VariableDefs { get; } = new List<Variable>();
 
-        public Dictionary<Variable, Instruction[]> VariableUseLocs { get; } = new Dictionary<Variable, Instruction[]>();
-        public Dictionary<Variable, Instruction[]> VariableDefLocs { get; } = new Dictionary<Variable, Instruction[]>();
+        public Dictionary<Variable, List<Instruction>> VariableUseLocs { get; } =
+            new Dictionary<Variable, List<Instruction>>();
+
+        public Dictionary<Variable, List<Instruction>> VariableDefLocs { get; } =
+            new Dictionary<Variable, List<Instruction>>();
     }
 }

@@ -17,6 +17,8 @@ namespace LibDerailer.CodeGraph.Nodes
             if (instruction.Details.BelongsToGroup(ArmInstructionGroupId.ARM_GRP_CALL))
                 defs = defs.Append(regVars[0]).Append(regVars[1])
                     .Append(regVars[2]).Append(regVars[3]).Append(regVars[16]);
+            if (instruction.Details.UpdateFlags && !instruction.Details.IsRegisterWritten(ArmRegisterId.ARM_REG_CPSR))
+                defs = defs.Append(regVars[16]);
             VariableDefs.AddRange(defs);
             var uses = instruction.Details.AllReadRegisters
                 .Where(reg => reg.Id != ArmRegisterId.ARM_REG_PC)

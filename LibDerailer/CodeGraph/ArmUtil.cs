@@ -59,5 +59,13 @@ namespace LibDerailer.CodeGraph
                     throw new ArgumentOutOfRangeException(nameof(cc), cc, null);
             }
         }
+
+        public static bool IsJump(ArmInstruction instruction)
+        {
+            return !instruction.Details.BelongsToGroup(ArmInstructionGroupId.ARM_GRP_CALL) &&
+                   (instruction.Details.BelongsToGroup(ArmInstructionGroupId.ARM_GRP_BRANCH_RELATIVE) ||
+                    instruction.Details.BelongsToGroup(ArmInstructionGroupId.ARM_GRP_JUMP) ||
+                    instruction.Details.IsRegisterExplicitlyWritten(ArmRegisterId.ARM_REG_PC));
+        }
     }
 }

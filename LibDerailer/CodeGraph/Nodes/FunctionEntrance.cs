@@ -8,6 +8,7 @@
             VariableDefs.Add(regVars[1]);
             VariableDefs.Add(regVars[2]);
             VariableDefs.Add(regVars[3]);
+            VariableDefs.Add(regVars[13]);
             foreach (var stackVar in func.StackVariables)
                 if (stackVar.Address >= 0)
                     VariableDefs.Add(stackVar);

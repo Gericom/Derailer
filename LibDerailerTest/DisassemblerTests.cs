@@ -1,6 +1,7 @@
 ﻿using System;
 using Gee.External.Capstone.Arm;
 using LibDerailer.CodeGraph;
+using LibDerailer.IO;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace LibDerailerTest
@@ -52,6 +53,55 @@ namespace LibDerailerTest
 
             var func = Disassembler.DisassembleArm(code, 0x02018F94, ArmDisassembleMode.Arm);
             //Assert.AreEqual(3, func.BasicBlocks.Count);
+        }
+
+        [TestMethod]
+        public void DeschedulingTest()
+        {
+            var code = new byte[]
+            {
+                0x20, 0x20, 0x9F, 0xE5, 0x00, 0x10, 0x92, 0xE5, 0x01, 0x19, 0x11, 0xE2,
+                0x00, 0x10, 0x92, 0x05, 0x00, 0x00, 0xE0, 0x13, 0x02, 0x1A, 0x01, 0x02,
+                0xA1, 0x16, 0xA0, 0x01, 0x00, 0x10, 0x80, 0x05, 0x00, 0x00, 0xA0, 0x03,
+                0x1E, 0xFF, 0x2F, 0xE1, 0x00, 0x06, 0x00, 0x04
+            };
+            var func = Disassembler.DisassembleArm(code, 0x0214A5F0, ArmDisassembleMode.Arm);
+        }
+
+        [TestMethod]
+        public void DeschedulingTest2()
+        {
+            var code = new uint[]
+            {
+                0xE92D4FF0, 0xE24DD004, 0xE5913008, 0xE5911000, 0xE1D340B0, 0xE1D172B2, 0xE1D310B8, 0xE1A0A2C4,
+                0xE1A09544, 0xE1A01E81, 0xE1B01FA1, 0xE5D31004, 0xE1A062C7, 0xE1A08547, 0xE1A05000, 0xE207701F,
+                0xE206601F, 0xE5D33005, 0xE208001F, 0x01871286, 0x01810500, 0xE204401F, 0xE20AA01F, 0xE209901F,
+                0x028DD004, 0x01C503B6, 0x08BD4FF0, 0x012FFF1E, 0xE0428001, 0xE0400009, 0xE0000098, 0xE043B001,
+                0xE1A0100B, 0xEB000000, 0xE0471004, 0xE1A07000, 0xE0000198, 0xE1A0100B, 0xEB000000, 0xE046100A,
+                0xE1A06000, 0xE0000198, 0xE1A0100B, 0xEB000000, 0xE0841006, 0xE08A0000, 0xE0892007, 0xE1810280,
+                0xE1800502, 0xE1C503B6, 0xE28DD004, 0xE8BD4FF0, 0xE12FFF1E
+            };
+            var func = Disassembler.DisassembleArm(InstructionWordsToBytes(code), 0, ArmDisassembleMode.Arm);
+        }
+
+        [TestMethod]
+        public void SwitchTest()
+        {
+            var code = new []
+            {
+                0xE240100A, 0xE3510005, 0x908FF101, 0xE12FFF1E, 0xEA000004, 0xEA000005, 0xEA000006, 0xEA000007,
+                0xEA000008, 0xEA000009, 0xE3A00000, 0xE12FFF1E, 0xE3A00001, 0xE12FFF1E, 0xE3A00004, 0xE12FFF1E,
+                0xE3A00009, 0xE12FFF1E, 0xE3E00000, 0xE12FFF1E, 0xE3A0005A, 0xE12FFF1E
+            };
+            var func = Disassembler.DisassembleArm(InstructionWordsToBytes(code), 0, ArmDisassembleMode.Arm);
+        }
+
+        private static byte[] InstructionWordsToBytes(uint[] instructions)
+        {
+            var code = new byte[instructions.Length * 4];
+            for (int i = 0; i < instructions.Length; i++)
+                IOUtil.WriteU32Le(code, i * 4, instructions[i]);
+            return code;
         }
     }
 }
