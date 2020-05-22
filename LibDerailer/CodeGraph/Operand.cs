@@ -6,11 +6,8 @@ using System.Threading.Tasks;
 
 namespace LibDerailer.CodeGraph
 {
-    public enum VariableLocation
+    public class Operand
     {
-        None,
-        Register,
-        Stack,
-        Memory
+
     }
 }

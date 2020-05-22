@@ -6,11 +6,13 @@ using System.Threading.Tasks;
 
 namespace LibDerailer.CodeGraph
 {
-    public enum VariableLocation
+    public class Constant : Operand
     {
-        None,
-        Register,
-        Stack,
-        Memory
+        public uint Value { get; }
+
+        public Constant(uint value)
+        {
+            Value = value;
+        }
     }
 }

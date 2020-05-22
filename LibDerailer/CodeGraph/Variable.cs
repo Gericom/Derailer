@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace LibDerailer.CodeGraph
 {
-    public class Variable : IComparable<Variable>
+    public class Variable : Operand, IComparable<Variable>
     {
         public string Name { get; set; }
 
@@ -34,6 +34,21 @@ namespace LibDerailer.CodeGraph
             if (ReferenceEquals(null, other))
                 return 1;
             return Address.CompareTo(other.Address);
+        }
+
+        public override string ToString()
+        {
+            switch (Location)
+            {
+                default:
+                    return Name;
+                case VariableLocation.Register:
+                    return $"{Name}@" + (Address == 16 ? "cpsr" : $"r{Address}");
+                case VariableLocation.Stack:
+                    return $"{Name}@sp" + (Address < 0 ? $"-0x{-Address:X02}" : $"+0x{Address:X02}");
+                case VariableLocation.Memory:
+                    return $"{Name}@0x{Address:X08}";
+            }
         }
     }
 }

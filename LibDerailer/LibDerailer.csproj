@@ -38,6 +38,7 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Numerics" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -46,6 +47,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CodeGraph\Constant.cs" />
     <Compile Include="CodeGraph\Nodes\ArmMachineInstruction.cs" />
     <Compile Include="CodeGraph\ArmUtil.cs" />
     <Compile Include="CodeGraph\BasicBlock.cs" />
@@ -53,7 +55,9 @@
     <Compile Include="CodeGraph\Function.cs" />
     <Compile Include="CodeGraph\Nodes\FunctionEntrance.cs" />
     <Compile Include="CodeGraph\Nodes\Instruction.cs" />
+    <Compile Include="CodeGraph\Nodes\IR\FxMul.cs" />
     <Compile Include="CodeGraph\Nodes\LoadConstant.cs" />
+    <Compile Include="CodeGraph\Operand.cs" />
     <Compile Include="CodeGraph\Variable.cs" />
     <Compile Include="CodeGraph\VariableLocation.cs" />
     <Compile Include="IO\IOUtil.cs" />

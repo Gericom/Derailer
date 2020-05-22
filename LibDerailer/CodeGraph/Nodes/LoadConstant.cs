@@ -1,4 +1,6 @@
-﻿namespace LibDerailer.CodeGraph.Nodes
+﻿using System.Linq;
+
+namespace LibDerailer.CodeGraph.Nodes
 {
     public class LoadConstant : Instruction
     {
@@ -10,6 +12,6 @@
             VariableDefs.Add(dst);
         }
 
-        public override string ToString() => $"{VariableDefs[0].Name} = 0x{Constant:X08}";
+        public override string ToString() => $"{VariableDefs.First()} = 0x{Constant:X08}";
     }
 }

@@ -62,7 +62,7 @@ namespace LibDerailer.CodeGraph
                             if (!uniqueIds.ContainsKey(useLoc))
                                 uniqueIds[useLoc] = id++;
                             sb.AppendLine(
-                                $"\"{uniqueIds[useLoc]}: {useLoc}\" -> \"{uniqueIds[inst]}: {inst}\" [label={use.Name}];");
+                                $"\"{uniqueIds[useLoc]}: {useLoc}\" -> \"{uniqueIds[inst]}: {inst}\" [label=\"{use}\"];");
                         }
                     }
                 }

@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Gee.External.Capstone;
 using Gee.External.Capstone.Arm;
 using LibDerailer.CodeGraph.Nodes;
+using LibDerailer.CodeGraph.Nodes.IR;
 using LibDerailer.IO;
 
 namespace LibDerailer.CodeGraph
@@ -15,7 +16,7 @@ namespace LibDerailer.CodeGraph
     {
         private static void ResolveDefUseRelations(Function func)
         {
-            var dict = new Dictionary<(Instruction, Variable), List<Instruction>>();
+            var dict = new Dictionary<(Instruction, Variable), HashSet<Instruction>>();
             foreach (var block in func.BasicBlocks)
             {
                 for (int i = 0; i < block.Instructions.Count; i++)
@@ -29,9 +30,9 @@ namespace LibDerailer.CodeGraph
                         {
                             if (block.Instructions[j].VariableDefs.Contains(use))
                             {
-                                inst.VariableUseLocs[use] = new List<Instruction>() {block.Instructions[j]};
+                                inst.VariableUseLocs[use] = new HashSet<Instruction>() {block.Instructions[j]};
                                 if (!dict.ContainsKey((block.Instructions[j], use)))
-                                    dict[(block.Instructions[j], use)] = new List<Instruction>();
+                                    dict[(block.Instructions[j], use)] = new HashSet<Instruction>();
                                 dict[(block.Instructions[j], use)].Add(inst);
                                 done = true;
                                 break;
@@ -44,7 +45,7 @@ namespace LibDerailer.CodeGraph
                         //otherwise it's in one (or multiple) of the predecessors
                         var visited = new HashSet<BasicBlock>();
                         var stack   = new Stack<BasicBlock>(block.Predecessors);
-                        var defs    = new List<Instruction>();
+                        var defs    = new HashSet<Instruction>();
                         while (stack.Count > 0)
                         {
                             var block2 = stack.Pop();
@@ -56,7 +57,7 @@ namespace LibDerailer.CodeGraph
                             {
                                 defs.Add(def);
                                 if (!dict.ContainsKey((def, use)))
-                                    dict[(def, use)] = new List<Instruction>();
+                                    dict[(def, use)] = new HashSet<Instruction>();
                                 dict[(def, use)].Add(inst);
                             }
                             else
@@ -72,7 +73,7 @@ namespace LibDerailer.CodeGraph
 
                 if (block.BlockCondition != ArmConditionCode.Invalid)
                     block.BlockConditionInstruction =
-                        block.Instructions[0].VariableUseLocs[func.MachineRegisterVariables[16]][0];
+                        block.Instructions[0].VariableUseLocs[func.MachineRegisterVariables[16]].First();
             }
 
             foreach (var (inst, var) in dict.Keys)
@@ -305,9 +306,42 @@ namespace LibDerailer.CodeGraph
             UnscheduleConditionals(func);
             RecreateConditionalBasicBlocks(func);
 
+            //create fresh reg variables
+            int varIdx = 0;
+            var regVars = new List<Variable>();
+            foreach (var block in func.BasicBlocks)
+            {
+                foreach (var inst in block.Instructions)
+                {
+                    while(true)
+                    {
+                        var def = inst.VariableDefs.FirstOrDefault(v => func.MachineRegisterVariables.Contains(v));
+                        if (def == null)
+                            break;
+                        if (!func.MachineRegisterVariables.Contains(def))
+                            continue;
+                        //create a new one
+                        var regVar = new Variable(VariableLocation.Register, $"regVar_{varIdx++}", def.Address, 4);
+                        regVars.Add(regVar);
+                        inst.ReplaceDef(def, regVar);   
+                    }
+                }
+            }
+
+            foreach (var block in func.BasicBlocks)
+            {
+                for(int i = 0; i < block.Instructions.Count; i++)
+                {
+                    FxMul.Match(block, block.Instructions[i]);
+                }
+            }
+
+            func.BasicBlocks.Sort();
+
             //debug: output dot
             File.WriteAllText(@"basicblocks.txt", func.BasicBlockGraphToDot());
             File.WriteAllText(@"defuse.txt", func.DefUseGraphToDot());
+           
 
             return func;
         }
@@ -358,7 +392,7 @@ namespace LibDerailer.CodeGraph
                                     (uint) ((ArmMachineInstruction) block.Instructions[i]).Instruction.Address,
                                     mInst.Instruction.Details.ConditionCode);
                                 newBlock1.BlockConditionInstruction =
-                                    mInst.VariableUseLocs[func.MachineRegisterVariables[16]][0];
+                                    mInst.VariableUseLocs[func.MachineRegisterVariables[16]].First();
                                 newBlock1.Instructions.AddRange(block.Instructions.Skip(i).Take(j - i));
                                 block.Instructions.RemoveRange(i, j - i);
 
@@ -366,7 +400,7 @@ namespace LibDerailer.CodeGraph
                                     (uint) ((ArmMachineInstruction) block.Instructions[i]).Instruction.Address,
                                     oppCc);
                                 newBlock2.BlockConditionInstruction =
-                                    mInst.VariableUseLocs[func.MachineRegisterVariables[16]][0];
+                                    mInst.VariableUseLocs[func.MachineRegisterVariables[16]].First();
                                 newBlock2.Instructions.AddRange(block.Instructions.Skip(i).Take(k - j));
                                 block.Instructions.RemoveRange(i, k - j);
 
@@ -415,7 +449,7 @@ namespace LibDerailer.CodeGraph
                         var newBlock = new BasicBlock((uint) mInst.Instruction.Address,
                             mInst.Instruction.Details.ConditionCode);
                         newBlock.BlockConditionInstruction =
-                            mInst.VariableUseLocs[func.MachineRegisterVariables[16]][0];
+                            mInst.VariableUseLocs[func.MachineRegisterVariables[16]].First();
                         newBlock.Instructions.AddRange(block.Instructions.Skip(i).Take(j - i));
                         block.Instructions.RemoveRange(i, j - i);
 
@@ -510,8 +544,8 @@ namespace LibDerailer.CodeGraph
                             inst is ArmMachineInstruction mInst2 &&
                             mInst2.Instruction.Details.ConditionCode == mInst.Instruction.Details.ConditionCode &&
                             inst.VariableUses.Contains(func.MachineRegisterVariables[16]) &&
-                            inst.VariableUseLocs[func.MachineRegisterVariables[16]][0] ==
-                            mInst.VariableUseLocs[func.MachineRegisterVariables[16]][0])
+                            inst.VariableUseLocs[func.MachineRegisterVariables[16]].First() ==
+                            mInst.VariableUseLocs[func.MachineRegisterVariables[16]].First())
                         .ToArray();
                     var revCond = ArmUtil.GetOppositeCondition(mInst.Instruction.Details.ConditionCode);
                     var cInsts2 = block.Instructions
@@ -519,8 +553,8 @@ namespace LibDerailer.CodeGraph
                             inst is ArmMachineInstruction mInst2 &&
                             mInst2.Instruction.Details.ConditionCode == revCond &&
                             inst.VariableUses.Contains(func.MachineRegisterVariables[16]) &&
-                            inst.VariableUseLocs[func.MachineRegisterVariables[16]][0] ==
-                            mInst.VariableUseLocs[func.MachineRegisterVariables[16]][0])
+                            inst.VariableUseLocs[func.MachineRegisterVariables[16]].First() ==
+                            mInst.VariableUseLocs[func.MachineRegisterVariables[16]].First())
                         .ToArray();
                     //Assume at most one split is made
                     int                   firstPartLength  = cInsts.Length;
