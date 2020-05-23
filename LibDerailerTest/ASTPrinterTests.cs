@@ -22,8 +22,9 @@ namespace LibDerailerTest
                 new Goto("Start"),
                 Expression.Assign(new Variable("Something")[5], "Thing")
             ));
-            var procedure = new Method("test_a", (new TypeName("void", true), "a"))
+            var procedure = new Method("test_a", (new TypeName("void", true), "a"), (new TypeName("int"), "b"))
             {
+                IsStatic = true,
                 Body = new Block(ifStatement)
             };
 

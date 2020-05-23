@@ -1,10 +1,12 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace LibDerailer.CCodeGen
 {
     public class Method
     {
+        public bool IsStatic { get; set; }
         public string   Name       { get; set; }
         public TypeName ReturnType { get; set; } = new TypeName();
 
@@ -27,16 +29,11 @@ namespace LibDerailer.CCodeGen
 
         public override string ToString()
         {
-            var builder      = new StringBuilder();
-            var param_string = "";
-            foreach (var param in Parameters)
-                param_string += $"{param.Item1} {param.Item2}";
-            builder.Append($"{ReturnType} {Name}({param_string})\n{{");
-
-            builder.Append(AstUtil.Indent(Body.ToString()));
-
-            builder.Append("\n}\n");
-            return builder.ToString();
+            string paramString = string.Join(", ", Parameters.Select(param => $"{param.type} {param.name}"));
+            return $"{(IsStatic ? "static " : "")}{ReturnType} {Name}({paramString})\n" +
+                   "{" +
+                   $"{AstUtil.Indent(Body.ToString())}\n" +
+                   "}\n";
         }
     }
 }

@@ -16,7 +16,7 @@ namespace LibDerailer.CCodeGen
         {
         }
 
-        public TypeName(string name, bool isPointer)
+        public TypeName(string name, bool isPointer = false)
         {
             Name      = name;
             IsPointer = isPointer;
