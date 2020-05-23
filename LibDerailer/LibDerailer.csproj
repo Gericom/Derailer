@@ -47,13 +47,30 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CCodeGen\Method.cs" />
+    <Compile Include="CCodeGen\AstUtil.cs" />
+    <Compile Include="CCodeGen\Block.cs" />
+    <Compile Include="CCodeGen\Statements\DoWhile.cs" />
+    <Compile Include="CCodeGen\Statements\Expressions\Literal.cs" />
+    <Compile Include="CCodeGen\Statements\Label.cs" />
+    <Compile Include="CCodeGen\Statements\Goto.cs" />
+    <Compile Include="CCodeGen\Statements\Expressions\Cast.cs" />
+    <Compile Include="CCodeGen\Statements\Expressions\Expression.cs" />
+    <Compile Include="CCodeGen\Statements\For.cs" />
+    <Compile Include="CCodeGen\Statements\Expressions\MethodCall.cs" />
+    <Compile Include="CCodeGen\Statements\Expressions\RawLiteral.cs" />
+    <Compile Include="CCodeGen\Statements\If.cs" />
+    <Compile Include="CCodeGen\Statements\Statement.cs" />
+    <Compile Include="CCodeGen\Statements\Expressions\StringLiteral.cs" />
+    <Compile Include="CCodeGen\Statements\Expressions\Variable.cs" />
+    <Compile Include="CCodeGen\TypeName.cs" />
+    <Compile Include="CCodeGen\Statements\While.cs" />
     <Compile Include="CodeGraph\Constant.cs" />
     <Compile Include="CodeGraph\Nodes\ArmMachineInstruction.cs" />
     <Compile Include="CodeGraph\ArmUtil.cs" />
     <Compile Include="CodeGraph\BasicBlock.cs" />
     <Compile Include="CodeGraph\Disassembler.cs" />
     <Compile Include="CodeGraph\Function.cs" />
-    <Compile Include="CodeGraph\Nodes\CCodeGen\Function.cs" />
     <Compile Include="CodeGraph\Nodes\FunctionEntrance.cs" />
     <Compile Include="CodeGraph\Nodes\Instruction.cs" />
     <Compile Include="CodeGraph\Nodes\IR\FxMul.cs" />
