@@ -3,15 +3,15 @@ using LibDerailer.CCodeGen.Statements.Expressions;
 
 namespace LibDerailer.CCodeGen.Statements
 {
-    public class DoWhile : Statement
+    public class CDoWhile : CStatement
     {
-        public Expression Predicate { get; set; }
-        public Block      Body      { get; set; }
+        public CExpression Predicate { get; set; }
+        public CBlock      Body      { get; set; }
 
-        public DoWhile(Expression predicate, Block body = null)
+        public CDoWhile(CExpression predicate, CBlock body = null)
         {
             Predicate = predicate;
-            Body      = body ?? new Block();
+            Body      = body ?? new CBlock();
         }
 
         public override string ToString() 

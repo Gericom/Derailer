@@ -3,25 +3,27 @@ using System.Globalization;
 
 namespace LibDerailer.CCodeGen.Statements.Expressions
 {
-    public class RawLiteral<T> : Literal where T : IConvertible
+    public class CRawLiteral<T> : CLiteral where T : IConvertible
     {
         public T Value { get; set; }
 
-        public RawLiteral(T v)
+        public CRawLiteral(T v)
         {
             Value = v;
         }
 
         public override string ToString()
         {
-            if(Value is bool b)
+            if (Value is bool b)
                 return b ? "TRUE" : "FALSE";
+            if (Value is uint v)
+                return $"0x{Value:X}";
             return Value.ToString(CultureInfo.InvariantCulture);
         }
 
-        public static implicit operator RawLiteral<T>(T a)
+        public static implicit operator CRawLiteral<T>(T a)
         {
-            return new RawLiteral<T>(a);
+            return new CRawLiteral<T>(a);
         }
     }
 }

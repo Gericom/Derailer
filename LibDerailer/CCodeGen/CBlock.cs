@@ -5,11 +5,11 @@ using LibDerailer.CCodeGen.Statements.Expressions;
 
 namespace LibDerailer.CCodeGen
 {
-    public class Block
+    public class CBlock
     {
-        public List<Statement> Statements { get; } = new List<Statement>();
+        public List<CStatement> Statements { get; } = new List<CStatement>();
 
-        public Block(params Statement[] statements)
+        public CBlock(params CStatement[] statements)
         {
             Statements.AddRange(statements);
         }
@@ -17,7 +17,7 @@ namespace LibDerailer.CCodeGen
         public override string ToString()
         {
             return "\n" + string.Join("\n",
-                from st in Statements select (st is Expression ? st.ToString() + ";" : st.ToString()));
+                from st in Statements select (st is CExpression ? st.ToString() + ";" : st.ToString()));
         }
     }
 }

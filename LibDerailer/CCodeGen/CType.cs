@@ -2,7 +2,7 @@
 
 namespace LibDerailer.CCodeGen
 {
-    public class TypeName
+    public class CType
     {
         public bool IsPointer { get; }
 
@@ -10,19 +10,19 @@ namespace LibDerailer.CCodeGen
          * In C++ I'd use a std::optional<std::string, std::unique_ptr<TypeName>> or something.
          */
         public string   Name    { get; }
-        public TypeName SubType { get; }
+        public CType SubType { get; }
 
-        public TypeName()
+        public CType()
         {
         }
 
-        public TypeName(string name, bool isPointer = false)
+        public CType(string name, bool isPointer = false)
         {
             Name      = name;
             IsPointer = isPointer;
         }
 
-        public TypeName(TypeName subType, bool isPointer)
+        public CType(CType subType, bool isPointer)
         {
             SubType   = subType;
             IsPointer = isPointer;

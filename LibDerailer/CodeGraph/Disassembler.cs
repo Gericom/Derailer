@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Gee.External.Capstone;
 using Gee.External.Capstone.Arm;
+using LibDerailer.CCodeGen;
 using LibDerailer.CodeGraph.Nodes;
 using LibDerailer.CodeGraph.Nodes.IR;
 using LibDerailer.IO;
@@ -138,8 +139,7 @@ namespace LibDerailer.CodeGraph
                     if (ArmUtil.IsJump(inst))
                     {
                         //Branch
-                        curBlock.Instructions.Add(new ArmMachineInstruction(inst, func.MachineRegisterVariables));
-
+                        var instruction = new ArmMachineInstruction(inst, func.MachineRegisterVariables);
 
                         if (inst.Id == ArmInstructionId.ARM_INS_ADD &&
                             inst.Details.ConditionCode == ArmConditionCode.ARM_CC_LS &&
@@ -161,6 +161,8 @@ namespace LibDerailer.CodeGraph
                                 curBlock.Successors.Add(boundaries[addr]);
                                 boundaries[addr].Predecessors.Add(curBlock);
                             }
+                            
+                            curBlock.Instructions.Add(instruction);
 
                             break;
                         }
@@ -169,6 +171,14 @@ namespace LibDerailer.CodeGraph
                             (inst.Details.ConditionCode == ArmConditionCode.ARM_CC_AL ||
                              inst.Details.ConditionCode == blockCondition))
                         {
+                            if (stackBase == 0 && inst.Details.Operands[0].Register.Id == ArmRegisterId.ARM_REG_LR)
+                            {
+                                instruction.VariableUses.Remove(func.MachineRegisterVariables[2]);
+                                instruction.VariableUses.Remove(func.MachineRegisterVariables[3]);
+                            }
+                            
+                            curBlock.Instructions.Add(instruction);
+
                             break;
                         }
 
@@ -183,7 +193,11 @@ namespace LibDerailer.CodeGraph
 
                             curBlock.Successors.Add(boundaries[addr]);
                             boundaries[addr].Predecessors.Add(curBlock);
+
+                            curBlock.Instructions.Add(new Branch(inst.Details.ConditionCode, boundaries[addr], func.MachineRegisterVariables[16]));
                         }
+                        else
+                            curBlock.Instructions.Add(instruction);
 
                         if (inst.Details.ConditionCode != ArmConditionCode.ARM_CC_AL)
                         {
@@ -240,6 +254,7 @@ namespace LibDerailer.CodeGraph
                     {
                         //Constant pool load
                         curBlock.Instructions.Add(new LoadConstant(
+                            inst.Details.ConditionCode,
                             func.MachineRegisterVariables[
                                 ArmUtil.GetRegisterNumber(inst.Details.Operands[0].Register.Id)],
                             IOUtil.ReadU32Le(data, (int) (
@@ -307,13 +322,13 @@ namespace LibDerailer.CodeGraph
             RecreateConditionalBasicBlocks(func);
 
             //create fresh reg variables
-            int varIdx = 0;
+            int varIdx  = 0;
             var regVars = new List<Variable>();
             foreach (var block in func.BasicBlocks)
             {
                 foreach (var inst in block.Instructions)
                 {
-                    while(true)
+                    while (true)
                     {
                         var def = inst.VariableDefs.FirstOrDefault(v => func.MachineRegisterVariables.Contains(v));
                         if (def == null)
@@ -321,27 +336,57 @@ namespace LibDerailer.CodeGraph
                         if (!func.MachineRegisterVariables.Contains(def))
                             continue;
                         //create a new one
-                        var regVar = new Variable(VariableLocation.Register, $"regVar_{varIdx++}", def.Address, 4);
+                        var regVar = new Variable(VariableLocation.Register, $"rv{varIdx++}", def.Address, 4);
                         regVars.Add(regVar);
-                        inst.ReplaceDef(def, regVar);   
+                        inst.ReplaceDef(def, regVar);
                     }
                 }
             }
 
-            foreach (var block in func.BasicBlocks)
-            {
-                for(int i = 0; i < block.Instructions.Count; i++)
-                {
-                    FxMul.Match(block, block.Instructions[i]);
-                }
-            }
+            // foreach (var block in func.BasicBlocks)
+            // {
+            //     for (int i = 0; i < block.Instructions.Count; i++)
+            //     {
+            //         FxMul.Match(block, block.Instructions[i]);
+            //     }
+            // }
 
             func.BasicBlocks.Sort();
 
             //debug: output dot
             File.WriteAllText(@"basicblocks.txt", func.BasicBlockGraphToDot());
             File.WriteAllText(@"defuse.txt", func.DefUseGraphToDot());
-           
+
+            //Console.WriteLine(new CCodeGen.CBlock(func.BasicBlocks[0].Instructions.SelectMany(c => c.GetCode()).ToArray()).ToString());
+
+            //Build c code
+            // var curBBlock = func.BasicBlocks[0];
+            // var u32 = new CType("u32");
+            // var method = new CMethod(u32, "func", (u32, "rv0"), (u32, "rv1"), (u32, "rv2"), (u32, "rv3"));
+            // while (true)
+            // {
+            //     method.Body.Statements.AddRange(curBBlock.Instructions.SelectMany(i => i.GetCode()));
+            //     if(curBBlock.Successors.Count == 2)
+            //     {
+            //         //probably if statement
+            //         // if(curBBlock.Instructions.Last() is Branch branch && branch.Condition != ArmConditionCode.ARM_CC_AL)
+            //         // {
+            //         //     var bfsQueue = new Queue<BasicBlock>();
+            //         //     bfsQueue.Enqueue(branch.Destination);
+            //         //     while (bfsQueue.Count > 0)
+            //         //     {
+            //         //         
+            //         //     }
+            //         // }
+            //         if(curBBlock.Instructions.Last() is Branch branch)
+            //         {
+            //             if(branch.Condition == ArmConditionCode.ARM_CC_AL)
+            //             {
+            //
+            //             }
+            //         }
+            //     }
+            // }
 
             return func;
         }
@@ -364,33 +409,27 @@ namespace LibDerailer.CodeGraph
                         if (!(block.Instructions[i] is ArmMachineInstruction mInst) ||
                             ArmUtil.IsJump(mInst.Instruction))
                             continue;
-                        if (mInst.Instruction.Details.ConditionCode == blockCondition)
+                        if (mInst.Condition == blockCondition)
                             continue;
-                        var oppCc = ArmUtil.GetOppositeCondition(mInst.Instruction.Details.ConditionCode);
+                        var oppCc = ArmUtil.GetOppositeCondition(mInst.Condition);
                         //find the first instruction with opposite condition or no condition
                         int j = i + 1;
                         if (j < block.Instructions.Count)
                         {
                             while (j < block.Instructions.Count &&
-                                   ((ArmMachineInstruction) block.Instructions[j]).Instruction.Details.ConditionCode !=
-                                   oppCc &&
-                                   ((ArmMachineInstruction) block.Instructions[j]).Instruction.Details.ConditionCode !=
-                                   ArmConditionCode.ARM_CC_AL)
+                                   block.Instructions[j].Condition != oppCc &&
+                                   block.Instructions[j].Condition != ArmConditionCode.ARM_CC_AL)
                                 j++;
 
-                            if (j < block.Instructions.Count &&
-                                ((ArmMachineInstruction) block.Instructions[j]).Instruction.Details.ConditionCode ==
-                                oppCc)
+                            if (j < block.Instructions.Count && block.Instructions[j].Condition == oppCc)
                             {
                                 int k = j + 1;
-                                while (((ArmMachineInstruction) block.Instructions[k]).Instruction.Details
-                                       .ConditionCode !=
-                                       ArmConditionCode.ARM_CC_AL)
+                                while (block.Instructions[k].Condition != ArmConditionCode.ARM_CC_AL)
                                     k++;
 
                                 var newBlock1 = new BasicBlock(
                                     (uint) ((ArmMachineInstruction) block.Instructions[i]).Instruction.Address,
-                                    mInst.Instruction.Details.ConditionCode);
+                                    mInst.Condition);
                                 newBlock1.BlockConditionInstruction =
                                     mInst.VariableUseLocs[func.MachineRegisterVariables[16]].First();
                                 newBlock1.Instructions.AddRange(block.Instructions.Skip(i).Take(j - i));
@@ -446,8 +485,7 @@ namespace LibDerailer.CodeGraph
                             }
                         }
 
-                        var newBlock = new BasicBlock((uint) mInst.Instruction.Address,
-                            mInst.Instruction.Details.ConditionCode);
+                        var newBlock = new BasicBlock((uint) mInst.Instruction.Address, mInst.Condition);
                         newBlock.BlockConditionInstruction =
                             mInst.VariableUseLocs[func.MachineRegisterVariables[16]].First();
                         newBlock.Instructions.AddRange(block.Instructions.Skip(i).Take(j - i));
@@ -534,28 +572,29 @@ namespace LibDerailer.CodeGraph
             {
                 for (int i = 0; i < block.Instructions.Count; i++)
                 {
-                    if (!(block.Instructions[i] is ArmMachineInstruction mInst))
-                        continue;
-                    if (mInst.Instruction.Details.ConditionCode == ArmConditionCode.ARM_CC_AL)
+                    var instruction = block.Instructions[i];
+                    // if (!(inst is ArmMachineInstruction mInst))
+                    //     continue;
+                    if (instruction.Condition == ArmConditionCode.ARM_CC_AL)
                         continue;
                     //find all instructions that depend on the same flag producing instruction and use the same condition code
                     var cInsts = block.Instructions
                         .Where(inst =>
                             inst is ArmMachineInstruction mInst2 &&
-                            mInst2.Instruction.Details.ConditionCode == mInst.Instruction.Details.ConditionCode &&
+                            mInst2.Condition == instruction.Condition &&
                             inst.VariableUses.Contains(func.MachineRegisterVariables[16]) &&
                             inst.VariableUseLocs[func.MachineRegisterVariables[16]].First() ==
-                            mInst.VariableUseLocs[func.MachineRegisterVariables[16]].First())
+                            instruction.VariableUseLocs[func.MachineRegisterVariables[16]].First())
                         .ToArray();
-                    var revCond = ArmUtil.GetOppositeCondition(mInst.Instruction.Details.ConditionCode);
-                    var cInsts2 = block.Instructions
-                        .Where(inst =>
-                            inst is ArmMachineInstruction mInst2 &&
-                            mInst2.Instruction.Details.ConditionCode == revCond &&
-                            inst.VariableUses.Contains(func.MachineRegisterVariables[16]) &&
-                            inst.VariableUseLocs[func.MachineRegisterVariables[16]].First() ==
-                            mInst.VariableUseLocs[func.MachineRegisterVariables[16]].First())
-                        .ToArray();
+                    var revCond = ArmUtil.GetOppositeCondition(instruction.Condition);
+                    // var cInsts2 = block.Instructions
+                    //     .Where(inst =>
+                    //         inst is ArmMachineInstruction mInst2 &&
+                    //         mInst2.Instruction.Details.ConditionCode == revCond &&
+                    //         inst.VariableUses.Contains(func.MachineRegisterVariables[16]) &&
+                    //         inst.VariableUseLocs[func.MachineRegisterVariables[16]].First() ==
+                    //         mInst.VariableUseLocs[func.MachineRegisterVariables[16]].First())
+                    //     .ToArray();
                     //Assume at most one split is made
                     int                   firstPartLength  = cInsts.Length;
                     int                   secondPartLength = 0;

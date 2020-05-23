@@ -1,10 +1,10 @@
 ﻿namespace LibDerailer.CCodeGen.Statements.Expressions
 {
-    public class StringLiteral : Literal
+    public class CStringLiteral : CLiteral
     {
         public string Value { get; set; }
 
-        public StringLiteral(string v)
+        public CStringLiteral(string v)
         {
             Value = v;
         }

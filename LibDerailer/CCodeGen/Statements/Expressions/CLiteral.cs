@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace LibDerailer.CCodeGen.Statements.Expressions
 {
-    public abstract class Literal : Expression
+    public abstract class CLiteral : CExpression
     {
     }
 }

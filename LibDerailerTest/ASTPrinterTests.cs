@@ -6,7 +6,7 @@ using LibDerailer.CCodeGen.Statements;
 using LibDerailer.CCodeGen.Statements.Expressions;
 using LibDerailer.CodeGraph;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Variable = LibDerailer.CCodeGen.Statements.Expressions.Variable;
+using CVariable = LibDerailer.CCodeGen.Statements.Expressions.CVariable;
 
 namespace LibDerailerTest
 {
@@ -16,16 +16,16 @@ namespace LibDerailerTest
         [TestMethod]
         public void PrintSimpleFunctionTest()
         {
-            var ifStatement = new If((Expression) 5 != 3.2f, new Block(
-                new Label("Start"),
-                new While(true),
-                new Goto("Start"),
-                Expression.Assign(new Variable("Something")[5], "Thing")
+            var ifStatement = new CIf((CExpression) 5 != 3.2f, new CBlock(
+                new CLabel("Start"),
+                new CWhile(true),
+                new CGoto("Start"),
+                CExpression.Assign(new CVariable("Something")[5], "Thing")
             ));
-            var procedure = new Method("test_a", (new TypeName("void", true), "a"), (new TypeName("int"), "b"))
+            var procedure = new CMethod("test_a", (new CType("void", true), "a"), (new CType("int"), "b"))
             {
                 IsStatic = true,
-                Body = new Block(ifStatement)
+                Body = new CBlock(ifStatement)
             };
 
             Console.WriteLine(procedure);

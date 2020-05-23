@@ -1,17 +1,17 @@
 ﻿namespace LibDerailer.CCodeGen.Statements.Expressions
 {
-    public class Variable : Literal
+    public class CVariable : CLiteral
     {
         public string Name { get; set; }
 
-        public Variable(string name)
+        public CVariable(string name)
         {
             Name = name;
         }
 
         public override string ToString() => Name;
 
-        public MethodCall this[Expression idx]
-            => new MethodCall(true, "[]", this, idx);
+        public CMethodCall this[CExpression idx]
+            => new CMethodCall(true, "[]", this, idx);
     }
 }

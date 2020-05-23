@@ -4,23 +4,23 @@ using System.Text;
 
 namespace LibDerailer.CCodeGen
 {
-    public class Method
+    public class CMethod
     {
         public bool IsStatic { get; set; }
         public string   Name       { get; set; }
-        public TypeName ReturnType { get; set; } = new TypeName();
+        public CType ReturnType { get; set; } = new CType();
 
-        public List<(TypeName type, string name)> Parameters { get; } = new List<(TypeName type, string name)>();
+        public List<(CType type, string name)> Parameters { get; } = new List<(CType type, string name)>();
 
-        public Block Body { get; set; } = new Block();
+        public CBlock Body { get; set; } = new CBlock();
 
-        public Method(string name, params (TypeName type, string name)[] parameters)
+        public CMethod(string name, params (CType type, string name)[] parameters)
         {
             Name = name;
             Parameters.AddRange(parameters);
         }
 
-        public Method(TypeName returnType, string name, params (TypeName type, string name)[] parameters)
+        public CMethod(CType returnType, string name, params (CType type, string name)[] parameters)
         {
             ReturnType = returnType;
             Name       = name;

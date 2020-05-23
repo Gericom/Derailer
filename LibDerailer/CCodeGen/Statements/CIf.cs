@@ -3,16 +3,16 @@ using LibDerailer.CCodeGen.Statements.Expressions;
 
 namespace LibDerailer.CCodeGen.Statements
 {
-    public class If : Statement
+    public class CIf : CStatement
     {
-        public Expression Predicate { get; set; }
-        public Block      IfBody    { get; set; }
-        public Block      ElseBody  { get; set; }
+        public CExpression Predicate { get; set; }
+        public CBlock      IfBody    { get; set; }
+        public CBlock      ElseBody  { get; set; }
 
-        public If(Expression predicate, Block ifBody = null, Block elseBody = null)
+        public CIf(CExpression predicate, CBlock ifBody = null, CBlock elseBody = null)
         {
             Predicate = predicate;
-            IfBody    = ifBody ?? new Block();
+            IfBody    = ifBody ?? new CBlock();
             ElseBody  = elseBody;
         }
 

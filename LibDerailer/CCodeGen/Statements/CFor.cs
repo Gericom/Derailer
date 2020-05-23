@@ -3,18 +3,18 @@ using LibDerailer.CCodeGen.Statements.Expressions;
 
 namespace LibDerailer.CCodeGen.Statements
 {
-    public class For : Statement
+    public class CFor : CStatement
     {
-        public Statement  Initial   { get; set; }
-        public Statement  Update    { get; set; }
-        public Expression Predicate { get; set; }
-        public Block      Body      { get; set; } = new Block();
+        public CStatement  Initial   { get; set; }
+        public CStatement  Update    { get; set; }
+        public CExpression Predicate { get; set; }
+        public CBlock      Body      { get; set; } = new CBlock();
 
-        public For()
+        public CFor()
         {
         }
 
-        public For(Statement initial, Statement update, Expression predicate, Block body)
+        public CFor(CStatement initial, CStatement update, CExpression predicate, CBlock body)
         {
             Initial   = initial;
             Update    = update;

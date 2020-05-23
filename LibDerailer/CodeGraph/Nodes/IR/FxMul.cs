@@ -4,12 +4,15 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Gee.External.Capstone.Arm;
+using LibDerailer.CCodeGen.Statements;
+using LibDerailer.CCodeGen.Statements.Expressions;
 
 namespace LibDerailer.CodeGraph.Nodes.IR
 {
     public class FxMul : Instruction
     {
         public FxMul(Variable dst, Variable srcA, Variable srcB, bool updatesFlags, Variable dstFlags)
+            : base(ArmConditionCode.ARM_CC_AL)
         {
             Dst          = dst;
             SrcA         = srcA;
@@ -116,5 +119,12 @@ namespace LibDerailer.CodeGraph.Nodes.IR
 
             return fxMul;
         }
+
+        public override CStatement[] GetCode() => new CStatement[]
+        {
+            CExpression.Assign(
+                new CVariable(Dst.Name),
+                new CMethodCall(false, "FX_Mul", new CVariable(SrcA.Name), new CVariable(SrcB.Name)))
+        };
     }
 }

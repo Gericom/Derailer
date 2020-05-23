@@ -1,9 +1,13 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
+using Gee.External.Capstone.Arm;
+using LibDerailer.CCodeGen.Statements;
 
 namespace LibDerailer.CodeGraph.Nodes
 {
     public abstract class Instruction
     {
+        public ArmConditionCode  Condition    { get; }
         public HashSet<Variable> VariableUses { get; } = new HashSet<Variable>();
         public HashSet<Variable> VariableDefs { get; } = new HashSet<Variable>();
 
@@ -17,6 +21,11 @@ namespace LibDerailer.CodeGraph.Nodes
         public Operand FlagsDefOperand { get; protected set; }
 
         public List<(bool isDef, Operand op)> Operands { get; } = new List<(bool isDef, Operand op)>();
+
+        public Instruction(ArmConditionCode condition)
+        {
+            Condition = condition;
+        }
 
         public void ReplaceDef(Variable oldVar, Variable newVar)
         {
@@ -57,5 +66,8 @@ namespace LibDerailer.CodeGraph.Nodes
                     defLoc.ReplaceDef(oldVar, newVar);
             }
         }
+
+        public virtual CStatement[] GetCode()
+            => new CStatement[0];
     }
 }

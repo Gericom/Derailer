@@ -1,10 +1,10 @@
 ﻿namespace LibDerailer.CCodeGen.Statements
 {
-    public class Label : Statement
+    public class CLabel : CStatement
     {
         public string Name { get; set; }
 
-        public Label(string name)
+        public CLabel(string name)
         {
             Name = name;
         }
