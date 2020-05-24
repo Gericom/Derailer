@@ -2,6 +2,7 @@
 using System.Linq;
 using Gee.External.Capstone.Arm;
 using LibDerailer.CCodeGen.Statements;
+using LibDerailer.CCodeGen.Statements.Expressions;
 
 namespace LibDerailer.CodeGraph.Nodes
 {
@@ -69,5 +70,8 @@ namespace LibDerailer.CodeGraph.Nodes
 
         public virtual CStatement[] GetCode()
             => new CStatement[0];
+
+        public virtual CExpression GetPredicateCode(ArmConditionCode condition)
+            => true;
     }
 }

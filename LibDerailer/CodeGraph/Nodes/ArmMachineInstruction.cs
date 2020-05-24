@@ -15,9 +15,9 @@ namespace LibDerailer.CodeGraph.Nodes
         public ArmInstruction Instruction { get; }
 
         public ArmMachineInstruction(ArmInstruction instruction, Variable[] regVars)
-        : base(instruction.Details.ConditionCode)
+            : base(instruction.Details.ConditionCode)
         {
-            Instruction   = instruction;
+            Instruction = instruction;
             var defs = instruction.Details.AllWrittenRegisters
                 .Where(reg => reg.Id != ArmRegisterId.ARM_REG_PC)
                 .Select(reg => regVars[ArmUtil.GetRegisterNumber(reg.Id)]);
@@ -36,7 +36,8 @@ namespace LibDerailer.CodeGraph.Nodes
                 uses = uses.Append(regVars[ArmUtil.GetRegisterNumber(instruction.Details.Operands[0].Register.Id)]);
             if (instruction.Details.BelongsToGroup(ArmInstructionGroupId.ARM_GRP_CALL) ||
                 instruction.Id == ArmInstructionId.ARM_INS_BX)
-                uses = uses.Append(regVars[0]).Append(regVars[1]).Append(regVars[2]).Append(regVars[3]);
+                uses = uses.Append(regVars[0]).Append(regVars[1]).Append(regVars[2]).Append(regVars[3])
+                    .Append(regVars[13]);
             VariableUses.UnionWith(uses);
 
             foreach (var op in Instruction.Details.Operands)
@@ -96,57 +97,6 @@ namespace LibDerailer.CodeGraph.Nodes
         }
 
         public override string ToString() => Instruction.Mnemonic + " " + Instruction.Operand;
-
-        // public Instruction[] ConvertToIR()
-        // {
-        //     switch (Instruction.Id)
-        //     {
-        //         case ArmInstructionId.ARM_INS_AND:
-        //         case ArmInstructionId.ARM_INS_EOR:
-        //         case ArmInstructionId.ARM_INS_SUB:
-        //         case ArmInstructionId.ARM_INS_ADD:
-        //         case ArmInstructionId.ARM_INS_ORR:
-        //         case ArmInstructionId.ARM_INS_BIC:
-        //         {
-        //             var opA = VariableUses.FirstOrDefault(v =>
-        //                 v.Location == VariableLocation.Register &&
-        //                 v.Address == ArmUtil.GetRegisterNumber(Instruction.Details.Operands[1].Register.Id));
-        //             Variable opB;
-        //             if(Instruction.Details.Operands[2].Type == ArmOperandType.Immediate)
-        //             {
-        //                 var constVar = new Variable(VariableLocation.None, "constVar", 0, 4);
-        //                 var constNode = new LoadConstant(constVar, (uint) Instruction.Details.Operands[2].Immediate);
-        //                 opB = constVar;
-        //             }
-        //             else
-        //             {
-        //                 var bReg = VariableUses.FirstOrDefault(v =>
-        //                     v.Location == VariableLocation.Register &&
-        //                     v.Address == ArmUtil.GetRegisterNumber(Instruction.Details.Operands[2].Register.Id));
-        //                 //var shiftNode = new Operator();
-        //             }
-        //             //var opB = VariableUses.FirstOrDefault(v =>
-        //             //    v.Location == VariableLocation.Register &&
-        //             //    v.Address == ArmUtil.GetRegisterNumber(Instruction.Details.Operands[1].Register.Id));
-        //                 //var opB = VariableUses[1];
-        //                 //if(Instruction.Details.Operands[1].ShiftOperation == LSL)
-        //                 break;
-        //         }
-        //
-        //         case ArmInstructionId.ARM_INS_TST:
-        //         case ArmInstructionId.ARM_INS_TEQ:
-        //         case ArmInstructionId.ARM_INS_CMP:
-        //         case ArmInstructionId.ARM_INS_CMN:
-        //             break;
-        //         case ArmInstructionId.ARM_INS_MOV:
-        //         case ArmInstructionId.ARM_INS_MVN:
-        //             break;
-        //         case ArmInstructionId.ARM_INS_MUL:
-        //             break;
-        //     }
-        //
-        //     return null;
-        // }
 
         private CExpression GetOperand(int idx)
         {
@@ -221,44 +171,112 @@ namespace LibDerailer.CodeGraph.Nodes
                     return new CStatement[]
                         {CExpression.Assign(GetOperand(0), GetOperand(1) * GetOperand(2) + GetOperand(3))};
                 case ArmInstructionId.ARM_INS_LDR:
+                case ArmInstructionId.ARM_INS_LDRH:
+                case ArmInstructionId.ARM_INS_LDRSH:
+                case ArmInstructionId.ARM_INS_LDRB:
                 {
+                    CType ptrType = null;
+                    switch (Instruction.Id)
+                    {
+                        case ArmInstructionId.ARM_INS_LDR:
+                            ptrType = new CType("u32", true);
+                            break;
+                        case ArmInstructionId.ARM_INS_LDRH:
+                            ptrType = new CType("u16", true);
+                            break;
+                        case ArmInstructionId.ARM_INS_LDRSH:
+                            ptrType = new CType("s16", true);
+                            break;
+                        case ArmInstructionId.ARM_INS_LDRB:
+                            ptrType = new CType("u8", true);
+                            break;
+                    }
+
                     if (Instruction.Details.WriteBack)
                         throw new NotImplementedException("Unimplemented instruction!");
+
+
+                    if (Instruction.Details.Operands[1].Memory.Base.Id == ArmRegisterId.ARM_REG_SP)
+                    {
+                        return new CStatement[]
+                        {
+                            CExpression.Assign(GetOperand(0),
+                                new CVariable(VariableUses.First(v => v.Location == VariableLocation.Stack).Name))
+                        };
+                    }
+
                     if (Instruction.Details.Operands[1].Memory.Index == null &&
                         Instruction.Details.Operands[1].Memory.Displacement == 0)
                         return new CStatement[]
                         {
                             CExpression.Assign(GetOperand(0),
-                                CExpression.Deref(new CCast(new CType("u32", true), GetOperand(1))))
+                                CExpression.Deref(new CCast(ptrType, GetOperand(1))))
                         };
                     else if (Instruction.Details.Operands[1].Memory.Index == null)
                         return new CStatement[]
                         {
                             CExpression.Assign(GetOperand(0),
-                                CExpression.Deref(new CCast(new CType("u32", true),
+                                CExpression.Deref(new CCast(ptrType,
                                     GetOperand(1) + Instruction.Details.Operands[1].Memory.Displacement)))
                         };
                     else
                     {
-                        throw new NotImplementedException("Unimplemented instruction!");
+                        if (Instruction.Details.Operands[1].ShiftOperation == ArmShiftOperation.Invalid ||
+                            (Instruction.Details.Operands[1].ShiftOperation == ArmShiftOperation.ARM_SFT_LSL &&
+                             Instruction.Details.Operands[1].ShiftValue == 0))
+                            return new CStatement[]
+                            {
+                                CExpression.Assign(GetOperand(0),
+                                    CExpression.Deref(new CCast(ptrType,
+                                        GetOperand(1) + GetOperand(2))))
+                            };
+                        else
+                            throw new NotImplementedException("Unimplemented instruction!");
                     }
                 }
                 case ArmInstructionId.ARM_INS_STR:
+                case ArmInstructionId.ARM_INS_STRH:
+                case ArmInstructionId.ARM_INS_STRB:
                 {
+                    CType ptrType = null;
+                    switch (Instruction.Id)
+                    {
+                        case ArmInstructionId.ARM_INS_STR:
+                            ptrType = new CType("u32", true);
+                            break;
+                        case ArmInstructionId.ARM_INS_STRH:
+                            ptrType = new CType("u16", true);
+                            break;
+                        case ArmInstructionId.ARM_INS_STRB:
+                            ptrType = new CType("u8", true);
+                            break;
+                    }
+
                     if (Instruction.Details.WriteBack)
                         throw new NotImplementedException("Unimplemented instruction!");
+
+                    if (Instruction.Details.Operands[1].Memory.Base.Id == ArmRegisterId.ARM_REG_SP)
+                    {
+                        return new CStatement[]
+                        {
+                            CExpression.Assign(
+                                new CVariable(VariableDefs.First(v => v.Location == VariableLocation.Stack).Name),
+                                GetOperand(0))
+                        };
+                    }
+
                     if (Instruction.Details.Operands[1].Memory.Index == null &&
                         Instruction.Details.Operands[1].Memory.Displacement == 0)
                         return new CStatement[]
                         {
                             CExpression.Assign(
-                                CExpression.Deref(new CCast(new CType("u32", true), GetOperand(1))), GetOperand(0))
+                                CExpression.Deref(new CCast(ptrType, GetOperand(1))), GetOperand(0))
                         };
                     else if (Instruction.Details.Operands[1].Memory.Index == null)
                         return new CStatement[]
                         {
                             CExpression.Assign(
-                                CExpression.Deref(new CCast(new CType("u32", true),
+                                CExpression.Deref(new CCast(ptrType,
                                     GetOperand(1) + Instruction.Details.Operands[1].Memory.Displacement)),
                                 GetOperand(0))
                         };
@@ -267,11 +285,133 @@ namespace LibDerailer.CodeGraph.Nodes
                         throw new NotImplementedException("Unimplemented instruction!");
                     }
                 }
+                case ArmInstructionId.ARM_INS_BL:
+                    return new CStatement[]
+                    {
+                        CExpression.Assign(
+                            new CVariable(VariableDefs
+                                .First(v => v.Location == VariableLocation.Register && v.Address == 0).Name),
+                            new CMethodCall(false, $"sub_{Instruction.Details.Operands[0].Immediate:X08}",
+                                new CVariable(VariableUses
+                                    .First(v => v.Location == VariableLocation.Register && v.Address == 0).Name),
+                                new CVariable(VariableUses
+                                    .First(v => v.Location == VariableLocation.Register && v.Address == 1).Name),
+                                new CVariable(VariableUses
+                                    .First(v => v.Location == VariableLocation.Register && v.Address == 2).Name),
+                                new CVariable(VariableUses
+                                    .First(v => v.Location == VariableLocation.Register && v.Address == 3).Name)
+                            ))
+                    };
+                case ArmInstructionId.ARM_INS_BLX:
+                    if (Instruction.Details.Operands[0].Type == ArmOperandType.Immediate)
+                        goto case ArmInstructionId.ARM_INS_BL;
+                    return new CStatement[]
+                    {
+                        CExpression.Assign(
+                            new CVariable(VariableDefs
+                                .First(v => v.Location == VariableLocation.Register && v.Address == 0).Name),
+                            new CMethodCall(false, ((Variable) Operands[0].op).Name,
+                                new CVariable(VariableUses
+                                    .First(v => v.Location == VariableLocation.Register && v.Address == 0).Name),
+                                new CVariable(VariableUses
+                                    .First(v => v.Location == VariableLocation.Register && v.Address == 1).Name),
+                                new CVariable(VariableUses
+                                    .First(v => v.Location == VariableLocation.Register && v.Address == 2).Name),
+                                new CVariable(VariableUses
+                                    .First(v => v.Location == VariableLocation.Register && v.Address == 3).Name)
+                            ))
+                    };
+                case ArmInstructionId.ARM_INS_LDM:
+                    if (Instruction.Details.Operands[0].Register.Id == ArmRegisterId.ARM_REG_SP &&
+                        Instruction.Details.WriteBack)
+                        return new CStatement[0];
+                    goto default;
+                case ArmInstructionId.ARM_INS_STMDB:
+                    if (Instruction.Details.Operands[0].Register.Id == ArmRegisterId.ARM_REG_SP &&
+                        Instruction.Details.WriteBack)
+                        return new CStatement[0];
+                    goto default;
                 case ArmInstructionId.ARM_INS_PUSH:
                 case ArmInstructionId.ARM_INS_POP:
                 case ArmInstructionId.ARM_INS_CMP:
                 case ArmInstructionId.ARM_INS_B:
+                case ArmInstructionId.ARM_INS_BX:
                     return new CStatement[0];
+                default:
+                    throw new NotImplementedException("Unimplemented instruction!");
+            }
+        }
+
+        public override CExpression GetPredicateCode(ArmConditionCode condition)
+        {
+            switch (Instruction.Id)
+            {
+                case ArmInstructionId.ARM_INS_AND:
+                case ArmInstructionId.ARM_INS_LSR:
+                    switch (condition)
+                    {
+                        case ArmConditionCode.ARM_CC_EQ:
+                            return GetOperand(0) == 0;
+                        case ArmConditionCode.ARM_CC_NE:
+                            return GetOperand(0) != 0;
+                        case ArmConditionCode.ARM_CC_HS:
+                        case ArmConditionCode.ARM_CC_LO:
+                        case ArmConditionCode.ARM_CC_MI:
+                        case ArmConditionCode.ARM_CC_PL:
+                        case ArmConditionCode.ARM_CC_VS:
+                        case ArmConditionCode.ARM_CC_VC:
+                        case ArmConditionCode.ARM_CC_HI:
+                        case ArmConditionCode.ARM_CC_LS:
+                        case ArmConditionCode.ARM_CC_GE:
+                        case ArmConditionCode.ARM_CC_LT:
+                        case ArmConditionCode.ARM_CC_GT:
+                        case ArmConditionCode.ARM_CC_LE:
+                            throw new NotImplementedException("Unimplemented and condition");
+                        case ArmConditionCode.ARM_CC_AL:
+                            return true;
+                        default:
+                            throw new ArgumentException("Invalid condition!");
+                    }
+                case ArmInstructionId.ARM_INS_CMP:
+                    switch (condition)
+                    {
+                        case ArmConditionCode.ARM_CC_EQ:
+                            return GetOperand(0) == GetSecondOperand(1);
+                        case ArmConditionCode.ARM_CC_NE:
+                            return GetOperand(0) != GetSecondOperand(1);
+                        case ArmConditionCode.ARM_CC_HS:
+                            return GetOperand(0) >= GetSecondOperand(1);
+                        case ArmConditionCode.ARM_CC_LO:
+                            return GetOperand(0) < GetSecondOperand(1);
+                        case ArmConditionCode.ARM_CC_MI:
+                            return new CCast(new CType("int"), GetOperand(0) - GetSecondOperand(1)) < 0;
+                        case ArmConditionCode.ARM_CC_PL:
+                            return new CCast(new CType("int"), GetOperand(0) - GetSecondOperand(1)) >= 0;
+                        case ArmConditionCode.ARM_CC_VS:
+                            throw new NotImplementedException("Unimplemented cmp condition");
+                        case ArmConditionCode.ARM_CC_VC:
+                            throw new NotImplementedException("Unimplemented cmp condition");
+                        case ArmConditionCode.ARM_CC_HI:
+                            return GetOperand(0) > GetSecondOperand(1);
+                        case ArmConditionCode.ARM_CC_LS:
+                            return GetOperand(0) <= GetSecondOperand(1);
+                        case ArmConditionCode.ARM_CC_GE:
+                            return new CCast(new CType("int"), GetOperand(0)) >=
+                                   new CCast(new CType("int"), GetSecondOperand(1));
+                        case ArmConditionCode.ARM_CC_LT:
+                            return new CCast(new CType("int"), GetOperand(0)) <
+                                   new CCast(new CType("int"), GetSecondOperand(1));
+                        case ArmConditionCode.ARM_CC_GT:
+                            return new CCast(new CType("int"), GetOperand(0)) >
+                                   new CCast(new CType("int"), GetSecondOperand(1));
+                        case ArmConditionCode.ARM_CC_LE:
+                            return new CCast(new CType("int"), GetOperand(0)) <=
+                                   new CCast(new CType("int"), GetSecondOperand(1));
+                        case ArmConditionCode.ARM_CC_AL:
+                            return true;
+                        default:
+                            throw new ArgumentException("Invalid condition!");
+                    }
                 default:
                     throw new NotImplementedException("Unimplemented instruction!");
             }

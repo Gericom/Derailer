@@ -54,7 +54,7 @@ namespace LibDerailer.CodeGraph
                 case ArmConditionCode.ARM_CC_LT: return ArmConditionCode.ARM_CC_GE;
                 case ArmConditionCode.ARM_CC_GT: return ArmConditionCode.ARM_CC_LE;
                 case ArmConditionCode.ARM_CC_LE: return ArmConditionCode.ARM_CC_GT;
-                case ArmConditionCode.ARM_CC_AL: return ArmConditionCode.ARM_CC_NE;
+                case ArmConditionCode.ARM_CC_AL: return ArmConditionCode.Invalid;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(cc), cc, null);
             }

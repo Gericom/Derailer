@@ -17,7 +17,10 @@ namespace LibDerailer.CodeGraph.Nodes
         {
             Destination = destination;
             if (condition != ArmConditionCode.ARM_CC_AL && cpsr != null)
+            {
                 VariableUses.Add(cpsr);
+                FlagsUseOperand = cpsr;
+            }
         }
     }
 }

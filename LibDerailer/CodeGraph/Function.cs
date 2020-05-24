@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Gee.External.Capstone.Arm;
 using LibDerailer.CodeGraph.Nodes;
 
 namespace LibDerailer.CodeGraph
@@ -37,8 +38,27 @@ namespace LibDerailer.CodeGraph
             var sb        = new StringBuilder();
             sb.AppendLine("digraph func {");
             foreach (var block in BasicBlocks)
+            {
                 foreach (var successor in block.Successors)
-                    sb.AppendLine($"\"0x{block.Address:X08}\" -> \"0x{successor.Address:X08}\";");
+                {
+                    ArmConditionCode cond = ArmConditionCode.ARM_CC_AL;
+                    BasicBlock otherSucc;
+                    if (successor.BlockConditionInstruction != null)
+                        cond = successor.BlockCondition;
+                    else if(block.Successors.Count == 2 && (otherSucc = block.Successors.First(s => s != successor)).BlockConditionInstruction != null)
+                        cond = ArmUtil.GetOppositeCondition(otherSucc.BlockCondition);
+                    else if (block.Instructions.Last() is Branch b)
+                    {
+                        if(successor == b.Destination)
+                            cond = b.Condition == block.BlockCondition ? ArmConditionCode.ARM_CC_AL : b.Condition;
+                        else if (block.Successors.Count == 2)
+                            cond = ArmUtil.GetOppositeCondition(b.Condition);
+                    }
+
+                    sb.AppendLine($"\"0x{block.Address:X08}\" -> \"0x{successor.Address:X08}\" [label=\"{cond}\"];");
+                }
+            }
+
             sb.AppendLine("}");
             return sb.ToString();
         }
