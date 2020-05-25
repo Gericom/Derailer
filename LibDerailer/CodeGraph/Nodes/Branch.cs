@@ -10,7 +10,7 @@ namespace LibDerailer.CodeGraph.Nodes
 {
     public class Branch : Instruction
     {
-        public BasicBlock Destination { get; }
+        public BasicBlock Destination { get; set; }
 
         public Branch(ArmConditionCode condition, BasicBlock destination, Variable cpsr = null) 
             : base(condition)

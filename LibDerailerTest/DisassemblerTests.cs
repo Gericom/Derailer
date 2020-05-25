@@ -291,6 +291,18 @@ namespace LibDerailerTest
             var func = Disassembler.DisassembleArm(code, 0x0201DC24, ArmDisassembleMode.Arm);
         }
 
+        [TestMethod]
+        public void DoubleLoopTest()
+        {
+            var code = new uint[]
+            {
+                0xE92D4000, 0xE24DD004, 0xE3A0E000, 0xE1A0C00E, 0xE3500000, 0xDA00000B, 0xE1A0200E, 0xE1A03002,
+                0xE3510000, 0xDA000003, 0xE2833001, 0xE1530001, 0xE08EE000, 0xBAFFFFFB, 0xE28CC001, 0xE15C0000,
+                0xE08EE001, 0xBAFFFFF4, 0xE28E0004, 0xE28DD004, 0xE8BD4000, 0xE12FFF1E
+            };
+            var func = Disassembler.DisassembleArm(InstructionWordsToBytes(code), 0, ArmDisassembleMode.Arm);
+        }
+
         private static byte[] InstructionWordsToBytes(uint[] instructions)
         {
             var code = new byte[instructions.Length * 4];

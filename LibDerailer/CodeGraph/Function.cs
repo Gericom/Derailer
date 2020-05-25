@@ -14,6 +14,7 @@ namespace LibDerailer.CodeGraph
         public string Name    { get; }
 
         public List<BasicBlock> BasicBlocks { get; } = new List<BasicBlock>();
+        public BasicBlock Epilogue { get; set; }
 
         public Variable[] MachineRegisterVariables { get; }
 

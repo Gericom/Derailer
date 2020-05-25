@@ -8,8 +8,12 @@ using LibDerailer.CodeGraph.Nodes;
 
 namespace LibDerailer.CodeGraph
 {
-    public class BasicBlock : IComparable<BasicBlock>
+    public class BasicBlock : IGraphNode<BasicBlock>, IComparable<BasicBlock>
     {
+        public bool IsLatchNode { get; set; }
+
+        public BasicBlock LatchNode { get; set; }
+
         public uint Address { get; }
 
         public Instruction BlockConditionInstruction { get; set; }
@@ -19,6 +23,8 @@ namespace LibDerailer.CodeGraph
 
         public List<BasicBlock> Predecessors { get; } = new List<BasicBlock>();
         public List<BasicBlock> Successors   { get; } = new List<BasicBlock>();
+
+        public Branch BlockBranch { get; set; }
 
         public BasicBlock(uint address, ArmConditionCode blockCondition = ArmConditionCode.Invalid)
         {
@@ -54,6 +60,21 @@ namespace LibDerailer.CodeGraph
                 if (!successor.Predecessors.Contains(prevBlock))
                     successor.Predecessors.Add(prevBlock);
             }
+        }
+
+        public override string ToString() => $"0x{Address:X08}";
+
+        public static IntervalNode[][] GetIntervalSequence(BasicBlock[] blocks, BasicBlock root)
+        {
+            //wrap original graph in IntervalNodes
+            var g1 = blocks.Select(b => new IntervalNode(b)).ToArray();
+            foreach (var node in g1)
+            {
+                node.Predecessors.AddRange(node.Block.Predecessors.Select(s => g1.First(g => g.Block == s)));
+                node.Successors.AddRange(node.Block.Successors.Select(s => g1.First(g => g.Block == s)));
+            }
+
+            return IntervalNode.GetIntervalSequence(g1, g1.First(b => b.Block == root));
         }
     }
 }

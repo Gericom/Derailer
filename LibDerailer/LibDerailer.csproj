@@ -73,6 +73,10 @@
     <Compile Include="CCodeGen\CType.cs" />
     <Compile Include="CCodeGen\Statements\CWhile.cs" />
     <Compile Include="CodeGraph\Constant.cs" />
+    <Compile Include="CodeGraph\GraphUtil.cs" />
+    <Compile Include="CodeGraph\IGraphNode.cs" />
+    <Compile Include="CodeGraph\Interval.cs" />
+    <Compile Include="CodeGraph\IntervalNode.cs" />
     <Compile Include="CodeGraph\Nodes\ArmMachineInstruction.cs" />
     <Compile Include="CodeGraph\ArmUtil.cs" />
     <Compile Include="CodeGraph\BasicBlock.cs" />
