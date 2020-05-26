@@ -267,7 +267,7 @@ namespace LibDerailerTest
         {
             var code = new uint[]
             {
-                0xE3500000, 0x1A000005, 0xE3510000, 0x0A000001, 0xE3520000, 0x1A000001, 0xE3530000, 0x0A000001,
+                0xE3500000, 0x1A000001, 0xE3510000, 0x0A000001, 0xE3520000, 0x1A000001, 0xE3530000, 0x0A000001,
                 0xE3A00005, 0xEA000000, 0xE3A00001, 0xE2800001, 0xE12FFF1E
             };
             var func = Disassembler.DisassembleArm(InstructionWordsToBytes(code), 0, ArmDisassembleMode.Arm);

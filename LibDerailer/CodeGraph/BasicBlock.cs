@@ -14,6 +14,13 @@ namespace LibDerailer.CodeGraph
 
         public BasicBlock LatchNode { get; set; }
 
+        public LoopType LoopType { get; set; }
+
+        public BasicBlock LoopHead { get; set; }
+        public BasicBlock LoopFollow { get; set; }
+
+        public BasicBlock IfFollow { get; set; }
+
         public uint Address { get; }
 
         public Instruction BlockConditionInstruction { get; set; }
@@ -25,6 +32,12 @@ namespace LibDerailer.CodeGraph
         public List<BasicBlock> Successors   { get; } = new List<BasicBlock>();
 
         public Branch BlockBranch { get; set; }
+        
+        public int PreOrderIndex { get; set; }
+        public int ReversePostOrderIndex { get; set; }
+        public BasicBlock ImmediateDominator { get; set; }
+
+        public int BackEdgeCount { get; set; }
 
         public BasicBlock(uint address, ArmConditionCode blockCondition = ArmConditionCode.Invalid)
         {
@@ -60,11 +73,13 @@ namespace LibDerailer.CodeGraph
                 if (!successor.Predecessors.Contains(prevBlock))
                     successor.Predecessors.Add(prevBlock);
             }
+
+            BlockBranch = b.BlockBranch;
         }
 
         public override string ToString() => $"0x{Address:X08}";
 
-        public static IntervalNode[][] GetIntervalSequence(BasicBlock[] blocks, BasicBlock root)
+        public static IntervalNode[][] GetIntervalSequence(IEnumerable<BasicBlock> blocks, BasicBlock root)
         {
             //wrap original graph in IntervalNodes
             var g1 = blocks.Select(b => new IntervalNode(b)).ToArray();

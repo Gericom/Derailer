@@ -25,7 +25,7 @@ namespace LibDerailer.CCodeGen.Statements
 
             if (ElseBody != null)
             {
-                builder.Append("\n}\nelse\n{\n");
+                builder.Append("\n}\nelse\n{");
                 builder.Append(AstUtil.Indent(ElseBody.ToString()));
             }
 
