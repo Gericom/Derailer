@@ -1,13 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Linq;
 using Gee.External.Capstone.Arm;
 using LibDerailer.CCodeGen.Statements;
 using LibDerailer.CCodeGen.Statements.Expressions;
+using LibDerailer.CodeGraph;
+using LibDerailer.CodeGraph.Nodes;
 
-namespace LibDerailer.CodeGraph.Nodes.IR
+namespace LibDerailer.IR
 {
     public class FxMul : Instruction
     {

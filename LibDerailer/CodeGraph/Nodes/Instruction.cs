@@ -3,6 +3,9 @@ using System.Linq;
 using Gee.External.Capstone.Arm;
 using LibDerailer.CCodeGen.Statements;
 using LibDerailer.CCodeGen.Statements.Expressions;
+using LibDerailer.IR;
+using LibDerailer.IR.Expressions;
+using LibDerailer.IR.Instructions;
 
 namespace LibDerailer.CodeGraph.Nodes
 {
@@ -67,6 +70,12 @@ namespace LibDerailer.CodeGraph.Nodes
                     defLoc.ReplaceDef(oldVar, newVar);
             }
         }
+
+        public virtual IEnumerable<IRInstruction> GetIRInstructions(IRContext context, IRBasicBlock parentBlock)
+            => Enumerable.Empty<IRInstruction>();
+
+        public virtual IRExpression GetIRPredicateCode(IRContext context, ArmConditionCode condition)
+            => true;
 
         public virtual CStatement[] GetCode()
             => new CStatement[0];

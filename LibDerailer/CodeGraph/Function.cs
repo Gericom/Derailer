@@ -56,7 +56,7 @@ namespace LibDerailer.CodeGraph
                             cond = ArmUtil.GetOppositeCondition(b.Condition);
                     }
 
-                    sb.AppendLine($"\"{block.ReversePostOrderIndex}: 0x{block.Address:X08}\" -> \"{successor.ReversePostOrderIndex}: 0x{successor.Address:X08}\" [label=\"{cond}\"];");
+                    sb.AppendLine($"\"0x{block.Address:X08}\" -> \"0x{successor.Address:X08}\" [label=\"{cond}\"];");
                 }
             }
 

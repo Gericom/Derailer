@@ -1,13 +1,14 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using LibDerailer.IR;
 
 namespace LibDerailer.CodeGraph
 {
-    public class IntervalNode : IGraphNode<IntervalNode>
+    public class IntervalNode
     {
         public bool InLoop { get; set; }
 
-        public BasicBlock Block    { get; }
+        public IRBasicBlock Block    { get; }
         public Interval   Interval { get; }
 
         public List<IntervalNode> Predecessors { get; } = new List<IntervalNode>();
@@ -18,7 +19,7 @@ namespace LibDerailer.CodeGraph
             Interval = interval;
         }
 
-        public IntervalNode(BasicBlock block)
+        public IntervalNode(IRBasicBlock block)
         {
             Block = block;
         }
@@ -31,7 +32,7 @@ namespace LibDerailer.CodeGraph
             return Interval.Blocks;
         }
 
-        public BasicBlock GetHeadBasicBlock()
+        public IRBasicBlock GetHeadBasicBlock()
         {
             var inode = this;
             while (inode.Block == null)
@@ -39,7 +40,7 @@ namespace LibDerailer.CodeGraph
             return inode.Block;
         }
 
-        public IEnumerable<BasicBlock> GetAllBasicBlocks()
+        public IEnumerable<IRBasicBlock> GetAllBasicBlocks()
         {
             if (Block != null)
                 return new[] {Block};

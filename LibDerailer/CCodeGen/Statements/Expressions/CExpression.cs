@@ -2,6 +2,17 @@
 {
     public abstract class CExpression : CStatement
     {
+        public CExpression BooleanAnd(CExpression b)
+            => new CMethodCall(true, "&&", this, b);
+        public CExpression BooleanOr(CExpression b)
+            => new CMethodCall(true, "||", this, b);
+
+        public CExpression ShiftLeft(CExpression b)
+            => new CMethodCall(true, "<<", this, b);
+
+        public CExpression ShiftRight(CExpression b)
+            => new CMethodCall(true, ">>", this, b);
+
         public static implicit operator CExpression(bool a)
             => new CRawLiteral<bool>(a);
 
