@@ -16,6 +16,8 @@ namespace LibDerailer.IR.Instructions
             : base(parentBlock)
         {
             ReturnValue = returnValue;
+            if(!(ReturnValue is null))
+                Uses.UnionWith(ReturnValue.GetAllVariables());
         }
 
         public override IEnumerable<CStatement> ToCCode()
@@ -23,18 +25,20 @@ namespace LibDerailer.IR.Instructions
             yield return new CReturn(ReturnValue?.ToCExpression());
         }
 
-        public override void Substitute(IRVariable variable, IRExpression expression)
+        public override void SubstituteUse(IRVariable variable, IRExpression expression)
         {
             if (ReferenceEquals(ReturnValue, variable))
-                ReturnValue = expression;
+                ReturnValue = expression.CloneComplete();
             else
                 ReturnValue.Substitute(variable, expression);
 
-            if (variable.Uses.Contains(this))
-                foreach (var v in expression.GetAllVariables())
-                    v.Uses.Add(this);
+            Uses.Clear();
+            Uses.UnionWith(ReturnValue.GetAllVariables());
+        }
 
-            variable.Uses.Remove(this);
+        public override void SubstituteDef(IRVariable variable, IRExpression expression)
+        {
+            
         }
     }
 }

@@ -1,8 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using Gee.External.Capstone.Arm;
-using LibDerailer.CCodeGen.Statements;
-using LibDerailer.CCodeGen.Statements.Expressions;
 using LibDerailer.IR;
 using LibDerailer.IR.Instructions;
 
@@ -21,11 +19,6 @@ namespace LibDerailer.CodeGraph.Nodes
         }
 
         public override string ToString() => $"{Operands[0].op} = 0x{Constant:X08}";
-
-        public override CStatement[] GetCode() => new CStatement[]
-        {
-            CExpression.Assign(new CVariable(((Variable) Operands[0].op).Name), Constant)
-        };
 
         public override IEnumerable<IRInstruction> GetIRInstructions(IRContext context, IRBasicBlock parentBlock)
         {

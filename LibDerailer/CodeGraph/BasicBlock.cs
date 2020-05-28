@@ -13,6 +13,7 @@ namespace LibDerailer.CodeGraph
     public class BasicBlock : IComparable<BasicBlock>
     {
         public uint Address { get; }
+        public int Order { get; set; }
 
         public Instruction BlockConditionInstruction { get; set; }
         public ArmConditionCode BlockCondition { get; }
@@ -61,6 +62,9 @@ namespace LibDerailer.CodeGraph
 
             BlockBranch = b.BlockBranch;
         }
+
+        public IEnumerable<IRInstruction> GetIRInstructions(IRContext context) 
+            => Instructions.SelectMany(i => i.GetIRInstructions(context, context.BasicBlockMapping[this]));
 
         public override string ToString() => $"0x{Address:X08}";
     }

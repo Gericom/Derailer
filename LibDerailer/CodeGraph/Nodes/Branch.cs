@@ -30,7 +30,7 @@ namespace LibDerailer.CodeGraph.Nodes
         public override IEnumerable<IRInstruction> GetIRInstructions(IRContext context, IRBasicBlock parentBlock)
         {
             yield return new IRJump(parentBlock, context.BasicBlockMapping[Destination],
-                FlagsUseOperand == null
+                FlagsUseOperand == null || Condition == ArmConditionCode.ARM_CC_AL
                     ? null
                     : VariableUseLocs[(Variable) FlagsUseOperand].First().GetIRPredicateCode(context, Condition));
         }

@@ -1,7 +1,5 @@
 ﻿using System.Linq;
 using Gee.External.Capstone.Arm;
-using LibDerailer.CCodeGen.Statements;
-using LibDerailer.CCodeGen.Statements.Expressions;
 using LibDerailer.CodeGraph;
 using LibDerailer.CodeGraph.Nodes;
 
@@ -117,12 +115,5 @@ namespace LibDerailer.IR
 
             return fxMul;
         }
-
-        public override CStatement[] GetCode() => new CStatement[]
-        {
-            CExpression.Assign(
-                new CVariable(Dst.Name),
-                new CMethodCall(false, "FX_Mul", new CVariable(SrcA.Name), new CVariable(SrcB.Name)))
-        };
     }
 }

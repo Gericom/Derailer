@@ -274,6 +274,17 @@ namespace LibDerailerTest
         }
 
         [TestMethod]
+        public void IfAndOrAndTest()
+        {
+            var code = new uint[]
+            {
+                0xE3500000, 0x0A000001, 0xE3510000, 0x1A000001, 0xE3520000, 0x0A000002, 0xE3530000, 0x13A00005,
+                0x1A000000, 0xE3A00001, 0xE2800001, 0xE12FFF1E
+            };
+            var func = Disassembler.DisassembleArm(InstructionWordsToBytes(code), 0, ArmDisassembleMode.Arm);
+        }
+
+        [TestMethod]
         public void LoopTest2()
         {
             var code = new byte[]

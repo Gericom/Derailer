@@ -12,8 +12,8 @@ namespace LibDerailer.IR.Expressions
     {
         public string Name { get; set; }
 
-        public HashSet<IRInstruction> Defs { get; } = new HashSet<IRInstruction>();
-        public HashSet<IRInstruction> Uses { get; } = new HashSet<IRInstruction>();
+        // public HashSet<IRInstruction> Defs { get; } = new HashSet<IRInstruction>();
+        // public HashSet<IRInstruction> Uses { get; } = new HashSet<IRInstruction>();
 
         public IRVariable(IRType type, string name)
             : base(type)
@@ -23,10 +23,15 @@ namespace LibDerailer.IR.Expressions
             Name = name;
         }
 
+        public override IRExpression CloneComplete()
+            => this;
+
         public override HashSet<IRVariable> GetAllVariables()
             => new HashSet<IRVariable>(new[] {this});
 
         public override CExpression ToCExpression()
             => new CVariable(Name);
+
+        public override string ToString() => Name;
     }
 }

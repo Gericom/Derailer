@@ -35,10 +35,13 @@ namespace LibDerailer.IR.Expressions
             Operand  = operand;
         }
 
+        public override IRExpression CloneComplete()
+            => new IRConversionExpression(Type, Operator, Operand.CloneComplete());
+
         public override void Substitute(IRVariable variable, IRExpression expression)
         {
             if (ReferenceEquals(Operand, variable))
-                Operand = expression;
+                Operand = expression.CloneComplete();
             else
                 Operand.Substitute(variable, expression);
         }

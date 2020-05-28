@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using LibDerailer.CCodeGen.Statements;
 using LibDerailer.CCodeGen.Statements.Expressions;
+using LibDerailer.CodeGraph;
 using LibDerailer.IR.Expressions;
 
 namespace LibDerailer.IR.Instructions
@@ -19,6 +20,9 @@ namespace LibDerailer.IR.Instructions
         {
             Destination = destination;
             Source      = source;
+            if (Destination is IRVariable v)
+                Defs.Add(v);
+            Uses.UnionWith(Source.GetAllVariables());
         }
 
         public override IEnumerable<CStatement> ToCCode()
@@ -26,27 +30,29 @@ namespace LibDerailer.IR.Instructions
             yield return CExpression.Assign(Destination.ToCExpression(), Source.ToCExpression());
         }
 
-        public override void Substitute(IRVariable variable, IRExpression expression)
+        public override void SubstituteUse(IRVariable variable, IRExpression expression)
         {
-            if (ReferenceEquals(Destination, variable))
-                Destination = expression;
-            else
-                Destination.Substitute(variable, expression);
-
             if (ReferenceEquals(Source, variable))
-                Source = expression;
+                Source = expression.CloneComplete();
             else
                 Source.Substitute(variable, expression);
 
-            if(variable.Uses.Contains(this))
-                foreach (var v in expression.GetAllVariables())
-                    v.Uses.Add(this);
+            Uses.Clear();
+            Uses.UnionWith(Source.GetAllVariables());
+        }
 
-            if (variable.Defs.Contains(this))
-                throw new NotImplementedException();
+        public override void SubstituteDef(IRVariable variable, IRExpression expression)
+        {
+            if (expression is IRVariable)
+            {
+                if (ReferenceEquals(Destination, variable))
+                    Destination = expression.CloneComplete();
+                else
+                    Destination.Substitute(variable, expression);
 
-            variable.Uses.Remove(this);
-            variable.Defs.Remove(this);
+                Defs.Clear();
+                Defs.UnionWith(Destination.GetAllVariables());
+            }
         }
     }
 }

@@ -14,5 +14,23 @@ namespace LibDerailer.IR
     {
         public List<IRBasicBlock> BasicBlocks { get; } = new List<IRBasicBlock>();
         public IRBasicBlock       Epilogue    { get; set; }
+
+        public string BasicBlockGraphToDot()
+        {
+            int id        = 0;
+            var uniqueIds = new Dictionary<Instruction, int>();
+            var sb        = new StringBuilder();
+            sb.AppendLine("digraph func {");
+            foreach (var block in BasicBlocks)
+            {
+                foreach (var successor in block.Successors)
+                {
+                    sb.AppendLine($"\"{block.ReversePostOrderIndex}\" -> \"{successor.ReversePostOrderIndex}\" [label=\"{(block.BlockJump?.Destination == successor ? "jump" : "")}\"];");
+                }
+            }
+
+            sb.AppendLine("}");
+            return sb.ToString();
+        }
     }
 }

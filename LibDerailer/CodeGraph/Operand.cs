@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace LibDerailer.CodeGraph
 {
-    public class Operand
+    public abstract class Operand
     {
 
     }

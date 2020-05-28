@@ -47,15 +47,18 @@ namespace LibDerailer.IR.Expressions
             OperandB = operandB;
         }
 
+        public override IRExpression CloneComplete() 
+            => new IRBinaryExpression(Type, Operator, OperandA.CloneComplete(), OperandB.CloneComplete());
+
         public override void Substitute(IRVariable variable, IRExpression expression)
         {
             if (ReferenceEquals(OperandA, variable))
-                OperandA = expression;
+                OperandA = expression.CloneComplete();
             else
                 OperandA.Substitute(variable, expression);
 
             if (ReferenceEquals(OperandB, variable))
-                OperandB = expression;
+                OperandB = expression.CloneComplete();
             else
                 OperandB.Substitute(variable, expression);
         }

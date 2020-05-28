@@ -53,6 +53,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Analysis\AnalysisPass.cs" />
+    <Compile Include="Analysis\ConstantPropagator.cs" />
+    <Compile Include="Analysis\DeadCodeEliminator.cs" />
+    <Compile Include="Analysis\ExpressionPropagator.cs" />
+    <Compile Include="Analysis\LifetimeAnalyser.cs" />
     <Compile Include="CCodeGen\CMethod.cs" />
     <Compile Include="CCodeGen\AstUtil.cs" />
     <Compile Include="CCodeGen\CBlock.cs" />
@@ -76,6 +81,8 @@
     <Compile Include="CodeGraph\Constant.cs" />
     <Compile Include="CodeGraph\Interval.cs" />
     <Compile Include="CodeGraph\IntervalNode.cs" />
+    <Compile Include="CodeGraph\Nodes\FunctionExit.cs" />
+    <Compile Include="IR\Expressions\IRDerefExpression.cs" />
     <Compile Include="IR\LoopType.cs" />
     <Compile Include="CodeGraph\Nodes\ArmMachineInstruction.cs" />
     <Compile Include="CodeGraph\ArmUtil.cs" />
@@ -93,7 +100,7 @@
     <Compile Include="IR\FxMul.cs" />
     <Compile Include="IR\Instructions\IRAssignment.cs" />
     <Compile Include="IR\Instructions\IRJump.cs" />
-    <Compile Include="IR\Instructions\IRLoadStore.cs" />
+    <Compile Include="IR\Instructions\IRStore.cs" />
     <Compile Include="IR\Instructions\IRReturn.cs" />
     <Compile Include="IR\IRBasicBlock.cs" />
     <Compile Include="IR\Expressions\IRBinaryExpression.cs" />

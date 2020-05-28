@@ -9,15 +9,29 @@ namespace LibDerailer.IR.Instructions
 {
     public class IRJump : IRInstruction
     {
+        private IRExpression _condition;
+
         /// <summary>
         /// Basic block that is the destination of this jump
         /// </summary>
-        public IRBasicBlock Destination { get; }
+        public IRBasicBlock Destination { get; set; }
 
         /// <summary>
         /// Condition for taking this jump, null if unconditional
         /// </summary>
-        public IRExpression Condition { get; set; }
+        public IRExpression Condition
+        {
+            get => _condition;
+            set
+            {
+                _condition = value;
+                Uses.Clear();
+                if (!(_condition is null))
+                    Uses.UnionWith(_condition.GetAllVariables());
+            }
+        }
+        
+        public bool IsLoopJump { get; set; }
 
         public IRJump(IRBasicBlock parentBlock, IRBasicBlock destination, IRExpression condition)
             : base(parentBlock)
@@ -26,18 +40,24 @@ namespace LibDerailer.IR.Instructions
             Condition   = condition;
         }
 
-        public override void Substitute(IRVariable variable, IRExpression expression)
+        public override void SubstituteUse(IRVariable variable, IRExpression expression)
         {
+            if (Condition is null)
+                return;
+
             if (ReferenceEquals(Condition, variable))
-                Condition = expression;
+                Condition = expression.CloneComplete();
             else
                 Condition.Substitute(variable, expression);
 
-            if (variable.Uses.Contains(this))
-                foreach (var v in expression.GetAllVariables())
-                    v.Uses.Add(this);
+            Uses.Clear();
+            if (!(_condition is null))
+                Uses.UnionWith(_condition.GetAllVariables());
+        }
 
-            variable.Uses.Remove(this);
+        public override void SubstituteDef(IRVariable variable, IRExpression expression)
+        {
+            
         }
     }
 }

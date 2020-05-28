@@ -1,8 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using Gee.External.Capstone.Arm;
-using LibDerailer.CCodeGen.Statements;
-using LibDerailer.CCodeGen.Statements.Expressions;
 using LibDerailer.IR;
 using LibDerailer.IR.Expressions;
 using LibDerailer.IR.Instructions;
@@ -11,7 +9,8 @@ namespace LibDerailer.CodeGraph.Nodes
 {
     public abstract class Instruction
     {
-        public ArmConditionCode  Condition    { get; }
+        public int OrderIndex { get; set; }
+        public ArmConditionCode  Condition    { get; set; }
         public HashSet<Variable> VariableUses { get; } = new HashSet<Variable>();
         public HashSet<Variable> VariableDefs { get; } = new HashSet<Variable>();
 
@@ -75,12 +74,6 @@ namespace LibDerailer.CodeGraph.Nodes
             => Enumerable.Empty<IRInstruction>();
 
         public virtual IRExpression GetIRPredicateCode(IRContext context, ArmConditionCode condition)
-            => true;
-
-        public virtual CStatement[] GetCode()
-            => new CStatement[0];
-
-        public virtual CExpression GetPredicateCode(ArmConditionCode condition)
             => true;
     }
 }

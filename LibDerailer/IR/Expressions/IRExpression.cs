@@ -18,6 +18,8 @@ namespace LibDerailer.IR.Expressions
         {
         }
 
+        public abstract IRExpression CloneComplete();
+
         public virtual HashSet<IRVariable> GetAllVariables()
             => new HashSet<IRVariable>();
 
@@ -27,6 +29,12 @@ namespace LibDerailer.IR.Expressions
         {
             if (Type != IRType.I1)
                 throw new IRTypeException();
+            if (this is IRUnaryExpression un && un.Operator == IRUnaryOperator.Not)
+                return un.Operand;
+            if (this is IRBinaryExpression bi && bi.Operator == IRBinaryOperator.And)
+                return bi.OperandA.InverseCondition() | bi.OperandB.InverseCondition();
+            if (this is IRBinaryExpression bi2 && bi2.Operator == IRBinaryOperator.Or)
+                return bi2.OperandA.InverseCondition() & bi2.OperandB.InverseCondition();
             if (!(this is IRComparisonExpression ce))
                 return !this;
             IRComparisonOperator revOp;

@@ -20,12 +20,15 @@ namespace LibDerailer.IR.Expressions
             Arguments.AddRange(arguments);
         }
 
+        public override IRExpression CloneComplete()
+            => new IRCallExpression(Type, TargetName, Arguments.Select(a => a.CloneComplete()).ToArray());
+
         public override void Substitute(IRVariable variable, IRExpression expression)
         {
             for (int i = 0; i < Arguments.Count; i++)
             {
                 if (ReferenceEquals(Arguments[i], variable))
-                    Arguments[i] = expression;
+                    Arguments[i] = expression.CloneComplete();
                 else
                     Arguments[i].Substitute(variable, expression);
             }

@@ -44,6 +44,9 @@ namespace LibDerailer.IR.Expressions
             Value = value;
         }
 
+        public override IRExpression CloneComplete() 
+            => new IRConstant<T>(Value);
+
         public override CExpression ToCExpression()
             => new CRawLiteral<T>(Value);
     }
