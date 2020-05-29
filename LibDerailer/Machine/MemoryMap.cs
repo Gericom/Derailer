@@ -12,7 +12,7 @@ namespace LibDerailer.Machine
         // Search for the lower bound, as regs may be 8 bytes long
         public Dictionary<UInt32, IOReg> Map = new Dictionary<uint, IOReg>();
 
-        public MemoryMap(string path)
+        public MemoryMap(string path, UInt32 base_address = 0x04000000)
         {
             // https://stackoverflow.com/a/20523165
             using (TextFieldParser parser = new TextFieldParser(path))
@@ -26,6 +26,7 @@ namespace LibDerailer.Machine
                         continue;
 
                     UInt32 addr = Convert.ToUInt32(fields[0], 16);
+                    if (addr < base_address) addr += base_address;
                     var reg = new IOReg();
                     reg.Name = fields[2];
                     reg.Bitsize = Convert.ToUInt32(fields[3], 10);
