@@ -32,7 +32,7 @@ namespace LibDerailer.Machine
                     reg.Bitsize = Convert.ToUInt32(fields[3], 10);
                     reg.CanRead = fields[4].Contains("r");
                     reg.CanWrite = fields[4].Contains("w");
-                    reg.category = fields[5];
+                    reg.Category = fields[5];
                     // Start at 7
                     for (int i = 7; i < fields.Length; i += 3)
                     {
