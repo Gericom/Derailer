@@ -10,7 +10,7 @@ namespace LibDerailer.Machine
     public class MemoryMap
     {
         // Search for the lower bound, as regs may be 8 bytes long
-        public Dictionary<UInt32, IOReg> Map = new Dictionary<uint, IOReg>();
+        public Dictionary<(UInt32, UInt32), IOReg> Map = new Dictionary<(UInt32, UInt32), IOReg>();
 
         public MemoryMap(string path, UInt32 base_address = 0x04000000)
         {
@@ -46,14 +46,7 @@ namespace LibDerailer.Machine
                             Bit = Convert.ToUInt32(field[2], 10)
                         });
                     }
-                    try
-                    {
-                        Map.Add(addr, reg);
-                    }
-                    catch (ArgumentException e)
-                    {
-                        // Ignore for now
-                    }
+                    Map.Add((addr, reg.Bitsize / 8), reg);
                 }
             }
         }
