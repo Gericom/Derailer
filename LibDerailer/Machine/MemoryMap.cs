@@ -7,48 +7,64 @@ using Microsoft.VisualBasic.FileIO;
 
 namespace LibDerailer.Machine
 {
-    public class MemoryMap
+    public abstract class MemoryMap
     {
         // Search for the lower bound, as regs may be 8 bytes long
-        public Dictionary<(UInt32, UInt32), IOReg> Map = new Dictionary<(UInt32, UInt32), IOReg>();
+        private readonly Dictionary<(uint address, uint size), IORegister> _map =
+            new Dictionary<(uint address, uint size), IORegister>();
 
-        public MemoryMap(string path, UInt32 base_address = 0x04000000)
+        public IReadOnlyCollection<IORegister> Registers => _map.Values;
+
+        protected MemoryMap(string path, uint baseAddress)
         {
             // https://stackoverflow.com/a/20523165
-            using (TextFieldParser parser = new TextFieldParser(path))
+            using (var parser = new TextFieldParser(path))
             {
                 parser.TextFieldType = FieldType.Delimited;
                 parser.SetDelimiters(",");
                 while (!parser.EndOfData)
                 {
-                    string[] fields = parser.ReadFields();
+                    var fields = parser.ReadFields();
                     if (fields[0].StartsWith("#"))
                         continue;
 
-                    UInt32 addr = Convert.ToUInt32(fields[0], 16);
-                    if (addr < base_address) addr += base_address;
-                    var reg = new IOReg();
-                    reg.Name = fields[2];
-                    reg.Bitsize = Convert.ToUInt32(fields[3], 10);
-                    reg.CanRead = fields[4].Contains("r");
-                    reg.CanWrite = fields[4].Contains("w");
-                    reg.Category = fields[5];
+                    uint addr = Convert.ToUInt32(fields[0], 16);
+                    if (addr < baseAddress)
+                        addr += baseAddress;
+
+                    var bitFields = new List<IORegisterField>();
                     // Start at 7
                     for (int i = 7; i < fields.Length; i += 3)
                     {
                         var field = fields.Skip(i).Take(3).ToArray();
                         if (field[0].Length == 0 || field[1].Length == 0 || field[2].Length == 0)
                             break;
-                        reg.Fields.Add(new IOField
-                        {
-                            Name = field[0],
-                            Shift = Convert.ToUInt32(field[1], 10),
-                            Bit = Convert.ToUInt32(field[2], 10)
-                        });
+                        bitFields.Add(
+                            new IORegisterField(field[0], uint.Parse(field[1]), uint.Parse(field[2])));
                     }
-                    Map.Add((addr, reg.Bitsize / 8), reg);
+
+                    var reg = new IORegister(
+                        fields[5],
+                        fields[2],
+                        addr,
+                        uint.Parse(fields[3]),
+                        fields[4].Contains("r"),
+                        fields[4].Contains("w"),
+                        bitFields.ToArray());
+
+                    _map.Add((addr, reg.BitSize / 8), reg);
                 }
             }
         }
+
+        public IORegister GetRegister(uint address, uint size) 
+            => _map.TryGetValue((address, size), out var reg) ? reg : null;
+
+        public abstract string GetRegisterDefineName(IORegister register);
+        public abstract string GetRegisterOffsetDefineName(IORegister register);
+        public abstract string GetRegisterAddressDefineName(IORegister register);
+        public abstract string GetRegisterFieldShiftDefineName(IORegister register, IORegisterField field);
+        public abstract string GetRegisterFieldSizeDefineName(IORegister register, IORegisterField field);
+        public abstract string GetRegisterFieldMaskDefineName(IORegister register, IORegisterField field);
     }
 }

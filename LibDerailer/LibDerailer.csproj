@@ -153,9 +153,10 @@
     <Compile Include="IO\IOUtil.cs" />
     <Compile Include="IR\IRContext.cs" />
     <Compile Include="IR\IRFunction.cs" />
-    <Compile Include="Machine\IOField.cs" />
-    <Compile Include="Machine\IOReg.cs" />
+    <Compile Include="Machine\IORegisterField.cs" />
+    <Compile Include="Machine\IORegister.cs" />
     <Compile Include="Machine\MemoryMap.cs" />
+    <Compile Include="Machine\NitroMemoryMap.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
