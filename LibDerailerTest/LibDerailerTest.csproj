@@ -54,6 +54,7 @@
   <ItemGroup>
     <Compile Include="ASTPrinterTests.cs" />
     <Compile Include="DisassemblerTests.cs" />
+    <Compile Include="IORegTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TypeInfoTests.cs" />
   </ItemGroup>

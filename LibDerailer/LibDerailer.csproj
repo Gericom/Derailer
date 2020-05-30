@@ -36,6 +36,7 @@
     <Reference Include="Gee.External.Capstone, Version=2.0.2.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Gee.External.Capstone.2.0.2\lib\net45\Gee.External.Capstone.dll</HintPath>
     </Reference>
+    <Reference Include="Microsoft.VisualBasic" />
     <Reference Include="Microsoft.VisualStudio.TestPlatform.TestFramework, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\packages\MSTest.TestFramework.1.3.2\lib\net45\Microsoft.VisualStudio.TestPlatform.TestFramework.dll</HintPath>
     </Reference>
@@ -152,6 +153,9 @@
     <Compile Include="IO\IOUtil.cs" />
     <Compile Include="IR\IRContext.cs" />
     <Compile Include="IR\IRFunction.cs" />
+    <Compile Include="Machine\IOField.cs" />
+    <Compile Include="Machine\IOReg.cs" />
+    <Compile Include="Machine\MemoryMap.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
