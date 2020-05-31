@@ -11,8 +11,8 @@ namespace LibDerailer.IO.Elf.Dwarf2
     {
         public uint      LowPc    => GetAttribute<uint>(Dwarf2Attribute.LowPc);
         public uint      HighPc   => GetAttribute<uint>(Dwarf2Attribute.HighPc);
-        public uint      DeclLine => GetAttribute<uint>(Dwarf2Attribute.DeclLine);
-        public uint      DeclFile => GetAttribute<uint>(Dwarf2Attribute.DeclFile);
+        public uint      DeclLine => Convert.ToUInt32(GetAttribute<object>(Dwarf2Attribute.DeclLine));
+        public uint      DeclFile => Convert.ToUInt32(GetAttribute<object>(Dwarf2Attribute.DeclFile));
         public Dwarf2Die Type     => GetAttribute<Dwarf2Die>(Dwarf2Attribute.Type);
         public bool      External => GetAttribute<bool>(Dwarf2Attribute.External);
         public string    Name     => GetAttribute<string>(Dwarf2Attribute.Name);

@@ -105,5 +105,12 @@ namespace LibDerailer.IR.Expressions
                     throw new ArgumentOutOfRangeException();
             }
         }
+
+        public override bool Equals(object obj)
+            => obj is IRComparisonExpression exp &&
+               exp.Operator == Operator &&
+               exp.Type == Type &&
+               exp.OperandA.Equals(OperandA) &&
+               exp.OperandB.Equals(OperandB);
     }
 }

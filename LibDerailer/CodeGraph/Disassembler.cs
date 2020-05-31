@@ -89,6 +89,8 @@ namespace LibDerailer.CodeGraph
 
         public static Function DisassembleArm(byte[] data, uint dataAddress, ArmDisassembleMode mode)
         {
+            bool hasReturnValue = true;
+
             var disassembler = CapstoneDisassembler.CreateArmDisassembler(mode);
             disassembler.DisassembleSyntax        = (DisassembleSyntax) 3;
             disassembler.EnableInstructionDetails = true;
@@ -254,6 +256,7 @@ namespace LibDerailer.CodeGraph
                                 boundaries.Add(addr, new BasicBlock(addr, inst.Details.ConditionCode));
                                 queue.Enqueue(i);
                             }
+
                             break;
                         }
 
@@ -282,6 +285,7 @@ namespace LibDerailer.CodeGraph
                                     : oppCc));
                             queue.Enqueue(j);
                         }
+
                         break;
                     }
 
@@ -651,9 +655,16 @@ namespace LibDerailer.CodeGraph
 
             if (epilogue != null)
             {
-                var funcExit = new FunctionExit(func.MachineRegisterVariables[0]);
-                funcExit.VariableUseLocs[func.MachineRegisterVariables[0]] = epilogue.Instructions.Last()
-                    .VariableUseLocs[func.MachineRegisterVariables[0]];
+                FunctionExit funcExit;
+                if (hasReturnValue)
+                {
+                    funcExit = new FunctionExit(func.MachineRegisterVariables[0]);
+                    funcExit.VariableUseLocs[func.MachineRegisterVariables[0]] = epilogue.Instructions.Last()
+                        .VariableUseLocs[func.MachineRegisterVariables[0]];
+                }
+                else
+                    funcExit = new FunctionExit(null);
+              
                 epilogue.Instructions.Clear();
                 epilogue.Instructions.Add(funcExit);
             }
@@ -732,19 +743,20 @@ namespace LibDerailer.CodeGraph
 
             irFunc.BasicBlocks.Sort((a, b) => a.ReversePostOrderIndex.CompareTo(b.ReversePostOrderIndex));
 
-            new LifetimeAnalyser().Run(irContext);
             new ConstantPropagator().Run(irContext);
-            new LifetimeAnalyser().Run(irContext);
             new ExpressionPropagator().Run(irContext);
-            new LifetimeAnalyser().Run(irContext);
             new DeadCodeEliminator().Run(irContext);
+            new StructurizeLoopsPass().Run(irContext);
+            new StructurizeIfsPass().Run(irContext);
+            new CompoundConditionsPass().Run(irContext);
+            new ForLoopsPass().Run(irContext);
             new LifetimeAnalyser().Run(irContext);
 
             //debug: output dot
             File.WriteAllText(@"basicblocks.txt", func.BasicBlockGraphToDot());
             File.WriteAllText(@"defuse.txt", func.DefUseGraphToDot());
             var u32    = new CType("u32");
-            var method = new CMethod(u32, "func");
+            var method = new CMethod(hasReturnValue ? u32 : new CType(), "func");
             if (func.StackVariables.Any(v => v.Address >= 0))
             {
                 method.Parameters.Add((u32, "rv0"));
@@ -766,14 +778,14 @@ namespace LibDerailer.CodeGraph
                     bool found = false;
                     foreach (var liveIn in irContext.Function.BasicBlocks[0].LiveIns)
                     {
-                        if(ReferenceEquals(irContext.VariableMapping[regVars[i]], liveIn))
+                        if (ReferenceEquals(irContext.VariableMapping[regVars[i]], liveIn))
                         {
-                            method.Parameters.Add((u32, $"r{i}"));
+                            method.Parameters.Add((u32, $"rv{i}"));
                             found = true;
                             break;
                         }
                     }
-                
+
                     if (!found)
                         break;
                 }
@@ -840,229 +852,8 @@ namespace LibDerailer.CodeGraph
             }
         }
 
-        private static void FindLoopNodes(IRFunction func, IRBasicBlock headNode, IRBasicBlock latchNode,
-            IRBasicBlock[] intervalNodes)
-        {
-            headNode.LoopHead = headNode;
-            var loopNodes = new List<IRBasicBlock>();
-            loopNodes.Add(headNode);
-            for (int i = headNode.ReversePostOrderIndex + 1; i < latchNode.ReversePostOrderIndex; i++)
-            {
-                var block = func.BasicBlocks[i];
-                if (loopNodes.Contains(block.ImmediateDominator) && intervalNodes.Contains(block))
-                {
-                    loopNodes.Add(block);
-                    if (block.LoopHead == null)
-                        block.LoopHead = headNode;
-                }
-            }
-
-            latchNode.LoopHead = headNode;
-            if (latchNode != headNode)
-                loopNodes.Add(latchNode);
-
-            if (latchNode.Successors.Count == 2)
-            {
-                var latchElseBlock = latchNode.BlockJump.Destination;
-                var latchIfBlock   = latchNode.Successors.First(s => s != latchElseBlock);
-                // if (headNode.Successors.Count == 2 || latchNode == headNode)
-                // {
-                //     var headElseBlock = headNode.BlockBranch.Destination;
-                //     var headIfBlock   = headNode.Successors.First(s => s != headElseBlock);
-                //     // if (latchNode == headNode || (loopNodes.Contains(headElseBlock) && loopNodes.Contains(headIfBlock)))
-                //     // {
-                //         headNode.LoopType = LoopType.Repeat;
-                //         if (latchIfBlock == headIfBlock)
-                //             headNode.LoopFollow = latchElseBlock;
-                //         else
-                //             headNode.LoopFollow = latchIfBlock;
-                //     // }
-                //     // else
-                //     // {
-                //     //     headNode.LoopType = LoopType.While;
-                //     //     if (loopNodes.Contains(headIfBlock))
-                //     //         headNode.LoopFollow = headElseBlock;
-                //     //     else
-                //     //         headNode.LoopFollow = headIfBlock;
-                //     // }
-                // }
-                // else
-                // {
-                headNode.LoopType = LoopType.DoWhile;
-                if (latchIfBlock == headNode)
-                    headNode.LoopFollow = latchElseBlock;
-                else
-                    headNode.LoopFollow = latchIfBlock;
-                latchNode.BlockJump.IsLoopJump = true;
-                // }
-            }
-            else
-            {
-                //todo
-            }
-        }
-
-        //Based on https://github.com/nemerle/dcc/blob/qt5/src/control.cpp
-
-        private static void StructurizeLoops(IRFunction func)
-        {
-            var intervals = IRBasicBlock.GetIntervalSequence(func.BasicBlocks, func.BasicBlocks[0]);
-
-            foreach (var gi in intervals)
-            {
-                var ni = gi.SelectMany(g => g.GetNodes()).ToArray();
-                foreach (var intervalNode in gi)
-                {
-                    var headBBlock = intervalNode.GetHeadBasicBlock();
-                    var nodes      = intervalNode.GetAllBasicBlocks().ToArray();
-
-                    IRBasicBlock latchNode = null;
-                    foreach (var predecessor in headBBlock.Predecessors)
-                    {
-                        if (!nodes.Contains(predecessor) || !IsBackEdge(predecessor, headBBlock))
-                            continue;
-                        if (latchNode == null || predecessor.ReversePostOrderIndex > latchNode.ReversePostOrderIndex)
-                            latchNode = predecessor;
-                    }
-
-                    if (latchNode != null)
-                    {
-                        //todo: case level check
-                        headBBlock.LatchNode = latchNode;
-                        FindLoopNodes(func, headBBlock, latchNode, nodes);
-                        latchNode.IsLatchNode = true;
-                    }
-                }
-            }
-        }
-
-        private static bool IsBackEdge(IRBasicBlock p, IRBasicBlock s)
-        {
-            if (p.PreOrderIndex < s.PreOrderIndex)
-                return false;
-
-            s.BackEdgeCount++;
-            return true;
-        }
-
-        private static void StructurizeIfs(IRFunction func)
-        {
-            var unresolved = new List<IRBasicBlock>();
-            foreach (var block in func.BasicBlocks.AsEnumerable().Reverse())
-            {
-                //and not some loop thingie
-                if (block.Successors.Count != 2 || block.BlockJump.IsLoopJump)
-                    continue;
-                var          dominatedBlocks = new List<IRBasicBlock>();
-                IRBasicBlock follow          = null;
-                int          followInEdges   = 0;
-                for (int i = block.ReversePostOrderIndex + 1; i < func.BasicBlocks.Count; i++)
-                {
-                    var dominatedBlock = func.BasicBlocks[i];
-                    if (dominatedBlock.ImmediateDominator != block)
-                        continue;
-                    dominatedBlocks.Add(dominatedBlock);
-                    int followInEdgesNew = dominatedBlock.Predecessors.Count - dominatedBlock.BackEdgeCount;
-                    //if (followInEdgesNew >= followInEdges)
-                    {
-                        follow        = dominatedBlock;
-                        followInEdges = followInEdgesNew;
-                    }
-                }
-
-                if (follow != null && followInEdges > 1)
-                {
-                    block.IfFollow = follow;
-                    foreach (var uBlock in unresolved)
-                        uBlock.IfFollow = follow;
-                    unresolved.Clear();
-                }
-                else
-                    unresolved.Add(block);
-            }
-        }
-
-        private static void HandleCompoundConditions(IRFunction func)
-        {
-            bool change = true;
-            while (change)
-            {
-                change = false;
-                for (int i = 0; i < func.BasicBlocks.Count; i++)
-                {
-                    var block = func.BasicBlocks[i];
-                    if (block.Successors.Count != 2)
-                        continue;
-                    var elseBlock = block.BlockJump.Destination;
-                    var ifBlock   = block.Successors.First(s => s != elseBlock);
-                    if (elseBlock.Successors.Count == 0)
-                        continue;
-
-                    change = true;
-                    if (ifBlock.Successors.Count == 2 && ifBlock.Predecessors.Count == 1 &&
-                        ifBlock.Instructions.Count == 1 && ifBlock.BlockJump.Destination == elseBlock)
-                    {
-                        block.BlockJump.Condition |= ifBlock.BlockJump.Condition;
-
-                        int ifIdx = block.Successors.IndexOf(elseBlock);
-                        var next  = ifBlock.Successors.First(s => s != elseBlock);
-                        block.Successors[1 - ifIdx] = next;
-                        next.Predecessors.Remove(ifBlock);
-                        next.Predecessors.Add(block);
-                        elseBlock.Predecessors.Remove(ifBlock);
-                        ifBlock.Successors.Clear();
-                        ifBlock.Instructions.Clear();
-                        i--;
-                    }
-                    else if (ifBlock.Successors.Count == 2 && ifBlock.Predecessors.Count == 1 &&
-                             ifBlock.Instructions.Count == 1 &&
-                             ifBlock.Successors.First(s => s != ifBlock.BlockJump.Destination) == elseBlock)
-                    {
-                        block.BlockJump.Condition |= ifBlock.BlockJump.Condition.InverseCondition();
-
-                        int ifIdx = block.Successors.IndexOf(elseBlock);
-                        var next  = ifBlock.Successors.First(s => s != elseBlock);
-                        block.Successors[1 - ifIdx] = next;
-                        next.Predecessors.Remove(ifBlock);
-                        next.Predecessors.Add(block);
-                        elseBlock.Predecessors.Remove(ifBlock);
-                        ifBlock.Successors.Clear();
-                        ifBlock.Instructions.Clear();
-                        i--;
-                    }
-                    else if (elseBlock.Successors.Count == 2 && elseBlock.Predecessors.Count == 1 &&
-                             elseBlock.Instructions.Count == 1 &&
-                             elseBlock.Successors.First(s => s != elseBlock.BlockJump.Destination) == ifBlock)
-                    {
-                        block.BlockJump.Condition &= elseBlock.BlockJump.Condition;
-
-                        int ifIdx = block.Successors.IndexOf(elseBlock);
-                        var next  = elseBlock.Successors.First(s => s != ifBlock);
-                        if (block.BlockJump.Destination == block.Successors[ifIdx])
-                            block.BlockJump.Destination = next;
-                        block.Successors[ifIdx] = next;
-                        next.Predecessors.Remove(elseBlock);
-                        next.Predecessors.Add(block);
-                        ifBlock.Predecessors.Remove(elseBlock);
-                        elseBlock.Successors.Clear();
-                        elseBlock.Instructions.Clear();
-                        i--;
-                    }
-                    else if (elseBlock.Successors.Count == 2 && elseBlock.Predecessors.Count == 1 &&
-                             elseBlock.Instructions.Count == 1 && elseBlock.BlockJump.Destination == ifBlock)
-                    {
-                    }
-                    else
-                        change = false;
-                }
-            }
-        }
-
-        private static void HandleForLoops(IRFunction func)
-        {
-        }
-
-        private static CBlock TransformBlocks(IRFunction func, IRBasicBlock head, IRBasicBlock end, bool loopBody = false)
+        private static CBlock TransformBlocks(IRFunction func, IRBasicBlock head, IRBasicBlock end,
+            bool loopBody = false)
         {
             var cBlock    = new CBlock();
             var curBBlock = head;
@@ -1078,6 +869,12 @@ namespace LibDerailer.CodeGraph
 
                 if (curBBlock == end)
                     break;
+                if (curBBlock.ForLoopHead != null && curBBlock.ForLoopHead.LoopType == LoopType.For)
+                {
+                    cBlock.Statements.AddRange(curBBlock.Instructions.SelectMany(i => i.ToCCode()));
+                    curBBlock = curBBlock.ForLoopHead;
+                }
+
                 if (curBBlock.LoopHead == curBBlock && (!loopBody || curBBlock != head))
                 {
                     var body = TransformBlocks(func, curBBlock, curBBlock.LoopFollow, true);
@@ -1091,6 +888,14 @@ namespace LibDerailer.CodeGraph
                         var predicate = latch.BlockJump.Condition.ToCExpression();
                         cBlock.Statements.Add(new CDoWhile(predicate, body));
                     }
+                    else if (curBBlock.LoopType == LoopType.For)
+                    {
+                        var latch     = curBBlock.LatchNode;
+                        var predicate = latch.BlockJump.Condition.ToCExpression();
+                        var update    = body.Statements.Last();
+                        body.Statements.Remove(update);
+                        cBlock.Statements.Add(new CFor(null, update, predicate, body));
+                    }
 
                     next = curBBlock.LoopFollow;
                 }
@@ -1102,27 +907,30 @@ namespace LibDerailer.CodeGraph
                     {
                         var bodyBlockStart = curBBlock.Successors.First(s => s != curBBlock.BlockJump.Destination);
                         var predicate      = curBBlock.BlockJump.Condition.InverseCondition().ToCExpression();
-                        cBlock.Statements.Add(new CIf(predicate,
-                            TransformBlocks(func, bodyBlockStart, curBBlock.IfFollow)));
+                        var body           = TransformBlocks(func, bodyBlockStart, curBBlock.IfFollow);
+
+                        cBlock.Statements.Add(new CIf(predicate, body));
 
                         next = curBBlock.BlockJump.Destination;
                     }
                     else
                     {
-                        var         elseBodyBlockStart = curBBlock.BlockJump.Destination;
-                        var         ifBodyBlockStart   = curBBlock.Successors.First(s => s != elseBodyBlockStart);
-                        var         ifBody             = TransformBlocks(func, ifBodyBlockStart, curBBlock.IfFollow);
-                        var         elseBody           = TransformBlocks(func, elseBodyBlockStart, curBBlock.IfFollow);
+                        var elseBodyBlockStart = curBBlock.BlockJump.Destination;
+                        var ifBodyBlockStart   = curBBlock.Successors.First(s => s != elseBodyBlockStart);
+
                         CExpression predicate;
                         if (ifBodyBlockStart.OrderIndex > elseBodyBlockStart.OrderIndex)
                         {
-                            var tmp = ifBody;
-                            ifBody    = elseBody;
-                            elseBody  = tmp;
-                            predicate = curBBlock.BlockJump.Condition.ToCExpression();
+                            var tmp = ifBodyBlockStart;
+                            ifBodyBlockStart   = elseBodyBlockStart;
+                            elseBodyBlockStart = tmp;
+                            predicate          = curBBlock.BlockJump.Condition.ToCExpression();
                         }
                         else
                             predicate = curBBlock.BlockJump.Condition.InverseCondition().ToCExpression();
+
+                        var ifBody   = TransformBlocks(func, ifBodyBlockStart, curBBlock.IfFollow);
+                        var elseBody = TransformBlocks(func, elseBodyBlockStart, curBBlock.IfFollow);
 
                         if (ifBody.Statements.Last() is CReturn)
                         {
@@ -1152,7 +960,8 @@ namespace LibDerailer.CodeGraph
                     }
                 }
 
-                if (curBBlock.IsLatchNode || (loopBody && next.LoopHead != head.LoopHead))
+                if ((curBBlock.IsLatchNode && curBBlock.LoopHead != curBBlock) ||
+                    (loopBody && next.LoopHead != head.LoopHead))
                     break;
                 curBBlock = next;
             }
@@ -1162,10 +971,6 @@ namespace LibDerailer.CodeGraph
 
         private static CBlock BasicBlocksToC(IRContext context)
         {
-            StructurizeLoops(context.Function);
-            StructurizeIfs(context.Function);
-            HandleCompoundConditions(context.Function);
-
             return TransformBlocks(context.Function, context.Function.BasicBlocks[0], null);
         }
 
@@ -1207,7 +1012,7 @@ namespace LibDerailer.CodeGraph
                                     k++;
 
                                 var newBlock1 = new BasicBlock(
-                                    (uint)((ArmMachineInstruction)block.Instructions[i]).Instruction.Address,
+                                    (uint) ((ArmMachineInstruction) block.Instructions[i]).Instruction.Address,
                                     mInst.Condition);
                                 newBlock1.BlockConditionInstruction =
                                     mInst.VariableUseLocs[func.MachineRegisterVariables[16]].First();

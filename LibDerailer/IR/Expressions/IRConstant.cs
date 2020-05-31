@@ -49,5 +49,10 @@ namespace LibDerailer.IR.Expressions
 
         public override CExpression ToCExpression()
             => new CRawLiteral<T>(Value);
+
+        public override bool Equals(object obj)
+            => obj is IRConstant<T> exp &&
+               exp.Value.Equals(Value) &&
+               exp.Type == Type;
     }
 }

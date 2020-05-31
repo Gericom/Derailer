@@ -36,5 +36,11 @@ namespace LibDerailer.IR.Expressions
 
         public override CExpression ToCExpression()
             => CExpression.Deref(new CCast(new CType(Type.ToCType(IsSigned), true), Pointer.ToCExpression()));
+
+        public override bool Equals(object obj)
+            => obj is IRDerefExpression exp &&
+               exp.IsSigned == IsSigned &&
+               exp.Type == Type &&
+               exp.Pointer.Equals(Pointer);
     }
 }

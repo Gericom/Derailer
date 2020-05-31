@@ -33,5 +33,8 @@ namespace LibDerailer.IR.Expressions
             => new CVariable(Name);
 
         public override string ToString() => Name;
+
+        public override bool Equals(object obj)
+            => ReferenceEquals(this, obj);
     }
 }

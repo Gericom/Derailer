@@ -24,6 +24,7 @@ namespace LibDerailer.IR
         public IRBasicBlock LoopHead         { get; set; }
         public IRBasicBlock LoopFollow       { get; set; }
         public IRBasicBlock ForLoopInitialIf { get; set; }
+        public IRBasicBlock ForLoopHead      { get; set; }
 
         public IRBasicBlock IfFollow { get; set; }
 

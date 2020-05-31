@@ -46,7 +46,7 @@ namespace LibDerailer.IR.Expressions
                 Operand.Substitute(variable, expression);
         }
 
-        public override HashSet<IRVariable> GetAllVariables() 
+        public override HashSet<IRVariable> GetAllVariables()
             => Operand.GetAllVariables();
 
         public override CExpression ToCExpression()
@@ -62,5 +62,11 @@ namespace LibDerailer.IR.Expressions
                     throw new ArgumentOutOfRangeException();
             }
         }
+
+        public override bool Equals(object obj)
+            => obj is IRConversionExpression exp &&
+               exp.Operator == Operator &&
+               exp.Type == Type &&
+               exp.Operand.Equals(Operand);
     }
 }

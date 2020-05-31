@@ -47,7 +47,7 @@ namespace LibDerailer.IR.Expressions
             OperandB = operandB;
         }
 
-        public override IRExpression CloneComplete() 
+        public override IRExpression CloneComplete()
             => new IRBinaryExpression(Type, Operator, OperandA.CloneComplete(), OperandB.CloneComplete());
 
         public override void Substitute(IRVariable variable, IRExpression expression)
@@ -94,7 +94,8 @@ namespace LibDerailer.IR.Expressions
                 case IRBinaryOperator.Lsr:
                     return OperandA.ToCExpression().ShiftRight(OperandB.ToCExpression());
                 case IRBinaryOperator.Asr:
-                    return new CCast(OperandA.Type.ToCType(true), OperandA.ToCExpression()).ShiftRight(OperandB.ToCExpression());
+                    return new CCast(OperandA.Type.ToCType(true), OperandA.ToCExpression()).ShiftRight(
+                        OperandB.ToCExpression());
                 case IRBinaryOperator.Mul:
                     return OperandA.ToCExpression() * OperandB.ToCExpression();
                 case IRBinaryOperator.Div:
@@ -105,5 +106,12 @@ namespace LibDerailer.IR.Expressions
                     throw new ArgumentOutOfRangeException();
             }
         }
+
+        public override bool Equals(object obj)
+            => obj is IRBinaryExpression exp && 
+               exp.Operator == Operator && 
+               exp.Type == Type &&
+               exp.OperandA.Equals(OperandA) && 
+               exp.OperandB.Equals(OperandB);
     }
 }

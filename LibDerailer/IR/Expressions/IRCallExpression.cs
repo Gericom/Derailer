@@ -44,5 +44,11 @@ namespace LibDerailer.IR.Expressions
 
         public override CExpression ToCExpression()
             => new CMethodCall(false, TargetName, Arguments.Select(a => a.ToCExpression()).ToArray());
+
+        public override bool Equals(object obj)
+            => obj is IRCallExpression exp &&
+               exp.TargetName == TargetName &&
+               exp.Type == Type &&
+               exp.Arguments.SequenceEqual(Arguments);
     }
 }

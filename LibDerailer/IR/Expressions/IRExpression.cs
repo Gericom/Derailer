@@ -25,6 +25,52 @@ namespace LibDerailer.IR.Expressions
 
         public abstract CExpression ToCExpression();
 
+        public IRExpression ReverseConditionSides()
+        {
+            if (Type != IRType.I1)
+                throw new IRTypeException();
+            if (!(this is IRComparisonExpression ce))
+                return this;
+            IRComparisonOperator revOp;
+            switch (ce.Operator)
+            {
+                case IRComparisonOperator.Equal:
+                    revOp = IRComparisonOperator.Equal;
+                    break;
+                case IRComparisonOperator.NotEqual:
+                    revOp = IRComparisonOperator.NotEqual;
+                    break;
+                case IRComparisonOperator.Less:
+                    revOp = IRComparisonOperator.Greater;
+                    break;
+                case IRComparisonOperator.LessEqual:
+                    revOp = IRComparisonOperator.GreaterEqual;
+                    break;
+                case IRComparisonOperator.Greater:
+                    revOp = IRComparisonOperator.Less;
+                    break;
+                case IRComparisonOperator.GreaterEqual:
+                    revOp = IRComparisonOperator.LessEqual;
+                    break;
+                case IRComparisonOperator.UnsignedLess:
+                    revOp = IRComparisonOperator.UnsignedGreater;
+                    break;
+                case IRComparisonOperator.UnsignedLessEqual:
+                    revOp = IRComparisonOperator.UnsignedGreaterEqual;
+                    break;
+                case IRComparisonOperator.UnsignedGreater:
+                    revOp = IRComparisonOperator.UnsignedLess;
+                    break;
+                case IRComparisonOperator.UnsignedGreaterEqual:
+                    revOp = IRComparisonOperator.UnsignedLessEqual;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+
+            return new IRComparisonExpression(revOp, ce.OperandB, ce.OperandA);
+        }
+
         public IRExpression InverseCondition()
         {
             if (Type != IRType.I1)
