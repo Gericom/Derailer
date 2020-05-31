@@ -371,6 +371,146 @@ namespace LibDerailerTest
             var func = Disassembler.DisassembleArm(code, 0x02083928, ArmDisassembleMode.Arm);
         }
 
+        public void MiniSwitchTest2()
+        {
+            var code = new uint[]
+            {
+                0xE3500000, // cmp r0,#0
+                0x0A000004, // beq *+24 ; 0x0000001c
+                0xE3500001, // cmp r0,#1
+                0x0A000004, // beq *+24 ; 0x00000024
+                0xE3500002, // cmp r0,#2
+                0x0A000004, // beq *+24 ; 0x0000002c
+                0xEA000005, // b *+28 ; 0x00000034
+                0xE3A00005, // mov r0,#5
+                0xEA000004, // b *+24 ; 0x00000038
+                0xE3A00009, // mov r0,#9
+                0xEA000002, // b *+16 ; 0x00000038
+                0xE3A00001, // mov r0,#1
+                0xEA000000, // b *+8
+                0xE3A00004, // mov r0,#4
+                0xE2800001, // add r0,r0,#1
+                0xE12FFF1E  // bx lr
+            };
+            var func = Disassembler.DisassembleArm(InstructionWordsToBytes(code), 0, ArmDisassembleMode.Arm);
+        }
+        [TestMethod]
+        public void MiniSwitchTest3()
+        {
+            /*
+            int foo(int rv0) {
+                int rv9 = 2;
+                switch (rv0)
+                {
+                    case 0:  rv9 = 0x5; break;
+                    case 1:  rv9 = 0x9;
+                    case 2:  rv9 = rv9 + 3; break;
+                    default: rv9 = 0x4; break;
+                }
+                return rv9 + 0x1;
+            }
+            */
+            var code = new uint[]
+            {
+                0xE3500000, // cmp r0,#0
+                0xE3A01002, // mov r1,#2
+                0x0A000004, // beq *+24 ; 0x00000020
+                0xE3500001, // cmp r0,#1
+                0x0A000004, // beq *+24 ; 0x00000028
+                0xE3500002, // cmp r0,#2
+                0x0A000003, // beq *+20 ; 0x0000002c
+                0xEA000004, // b *+24 ; 0x00000034
+                0xE3A01005, // mov r1,#5
+                0xEA000003, // b *+20 ; 0x00000038
+                0xE3A01009, // mov r1,#9
+                0xE2811003, // add r1,r1,#3
+                0xEA000000, // b *+8
+                0xE3A01004, // mov r1,#4
+                0xE2810001, // add r0,r1,#1
+                0xE12FFF1E  // bx lr
+            };
+            var func = Disassembler.DisassembleArm(InstructionWordsToBytes(code), 0, ArmDisassembleMode.Arm);
+        }
+        [TestMethod]
+        public void UnstructuredLoopSwitchTest()
+        {
+            /*
+             int bar(int x, int* y, int *z) {
+                int i;
+                for (i = 0; i < 10; i++) {
+                switch (i) {
+                    case 1: continue;
+                    case 2: *y = i; break;
+                    case 3: *y = i + 1;
+                }
+
+                *z++;
+                }
+            }
+             */
+            var code = new uint[]
+            {
+                0xE3A0C000, // mov r12,#0
+                0xE35C0001, // cmp r12,#1
+                0x0A000007, // beq *+36 ; 0x0000002c
+                0xE35C0002, // cmp r12,#2
+                0x0A000003, // beq *+20 ; 0x00000024
+                0xE35C0003, // cmp r12,#3
+                0x028C3001, // addeq r3,r12,#1
+                0x05813000, // streq r3,[r1]
+                0xEA000000, // b *+8
+                0xE581C000, // str r12,[r1]
+                0xE2822004, // add r2,r2,#4
+                0xE28CC001, // add r12,r12,#1
+                0xE35C000A, // cmp r12,#10
+                0xBAFFFFF2, // blt *-48 ; 0x00000004
+                0xE12FFF1E  // bx lr
+            };
+            var func = Disassembler.DisassembleArm(InstructionWordsToBytes(code), 0, ArmDisassembleMode.Arm);
+        }
+        [TestMethod]
+        public void SwitchBinarySearchTest()
+        {
+            /* int binarySwitch(int x) {
+                switch(x) {
+                    case 3: return 4;
+                    case 6: return 9;
+                    case 1: return 3;
+                    case 200: return 10;
+                    case 201: return 6;
+                }
+            }*/
+            var code = new uint[]
+            {
+                0xE35000C8, // cmp r0,#200
+                0xCA00000C, // bgt * +56; 0x0000003c
+                0xE35000C8, // cmp r0,#200
+                0xAA000011, // bge * +76; 0x00000058
+                0xE3500006, // cmp r0,#6
+                0xC12FFF1E, // bxgt lr
+                0xE3500001, // cmp r0,#1
+                0xB12FFF1E, // bxlt lr
+                0xE3500001, // cmp r0,#1
+                0x0A000009, // beq * +44; 0x00000050
+                0xE3500003, // cmp r0,#3
+                0x0A000005, // beq * +28; 0x00000048
+                0xE3500006, // cmp r0,#6
+                0x03A00009, // moveq r0,#9
+                0xE12FFF1E, // bx lr
+                0xE35000C9, // cmp r0,#201
+                0x03A00006, // moveq r0,#6
+                0xE12FFF1E, // bx lr
+                0xE3A00004, // mov r0,#4
+                0xE12FFF1E, // bx lr
+                0xE3A00003, // mov r0,#3
+                0xE12FFF1E, // bx lr
+                0xE3A0000A, // mov r0,#10
+                0xE12FFF1E  // bx lr
+            };
+
+            var func = Disassembler.DisassembleArm(InstructionWordsToBytes(code), 0, ArmDisassembleMode.Arm);
+        }
+
         private static byte[] InstructionWordsToBytes(uint[] instructions)
         {
             var code = new byte[instructions.Length * 4];
