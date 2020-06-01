@@ -42,6 +42,17 @@ namespace LibDerailer.CCodeGen.Statements.Expressions
                 (Arguments[1] as CMethodCall)?.IsOperator == true)
                 arg1 = $"({arg1})";
 
+            if (Name == "=" &&
+                Arguments[0] is CVariable arg0var &&
+                Arguments[1] is CMethodCall a1mc &&
+                a1mc.IsOperator &&
+                a1mc.Name == "+" &&
+                a1mc.Arguments.Count == 2 &&
+                a1mc.Arguments[0] is CVariable arg1var &&
+                arg0var.Name == arg1var.Name &&
+                (a1mc.Arguments[1].ToString() == "1" || a1mc.Arguments[1].ToString() == "0x1"))
+                return $"{arg0}++";
+
             return $"{arg0} {Name} {arg1}";
         }
     }

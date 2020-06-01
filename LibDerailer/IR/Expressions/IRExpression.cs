@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Security.Policy;
 using LibDerailer.CCodeGen.Statements.Expressions;
+using LibDerailer.IR.Types;
 
 namespace LibDerailer.IR.Expressions
 {
@@ -27,7 +28,7 @@ namespace LibDerailer.IR.Expressions
 
         public IRExpression ReverseConditionSides()
         {
-            if (Type != IRType.I1)
+            if (!Type.Equals(IRPrimitive.Bool))
                 throw new IRTypeException();
             if (!(this is IRComparisonExpression ce))
                 return this;
@@ -73,7 +74,7 @@ namespace LibDerailer.IR.Expressions
 
         public IRExpression InverseCondition()
         {
-            if (Type != IRType.I1)
+            if (!Type.Equals(IRPrimitive.Bool))
                 throw new IRTypeException();
             if (this is IRUnaryExpression un && un.Operator == IRUnaryOperator.Not)
                 return un.Operand;
@@ -123,23 +124,21 @@ namespace LibDerailer.IR.Expressions
             return new IRComparisonExpression(revOp, ce.OperandA, ce.OperandB);
         }
 
-        public IRConversionExpression Sext(IRType dstType)
-            => new IRConversionExpression(dstType, IRConversionOperator.Sext, this);
-
-        public IRConversionExpression Zext(IRType dstType)
-            => new IRConversionExpression(dstType, IRConversionOperator.Zext, this);
-
-        public IRConversionExpression Trunc(IRType dstType)
-            => new IRConversionExpression(dstType, IRConversionOperator.Trunc, this);
+        public IRExpression Cast(IRType type)
+        {
+            if (type == Type)
+                return this;
+            return new IRConversionExpression(type, this);
+        }
 
         public IRBinaryExpression ShiftLeft(IRExpression amount)
-            => new IRBinaryExpression(Type, IRBinaryOperator.Lsl, this, amount);
+            => new IRBinaryExpression(Type, IRBinaryOperator.Lsl, this, amount.Cast(Type));
 
         public IRBinaryExpression ShiftRightLogical(IRExpression amount)
-            => new IRBinaryExpression(Type, IRBinaryOperator.Lsr, this, amount);
+            => new IRBinaryExpression(Type, IRBinaryOperator.Lsr, this, amount.Cast(Type));
 
         public IRBinaryExpression ShiftRightArithmetic(IRExpression amount)
-            => new IRBinaryExpression(Type, IRBinaryOperator.Asr, this, amount);
+            => new IRBinaryExpression(Type, IRBinaryOperator.Asr, this, amount.Cast(Type));
 
         public IRComparisonExpression LessThan(IRExpression b)
             => new IRComparisonExpression(IRComparisonOperator.Less, this, b);
@@ -239,10 +238,10 @@ namespace LibDerailer.IR.Expressions
 
         public static IRUnaryExpression operator !(IRExpression a)
         {
-            if (a.Type != IRType.I1)
+            if (a.Type != IRPrimitive.Bool)
                 throw new IRTypeException();
 
-            return new IRUnaryExpression(IRType.I1, IRUnaryOperator.Not, a);
+            return new IRUnaryExpression(IRPrimitive.Bool, IRUnaryOperator.Not, a);
         }
 
         public static IRUnaryExpression operator ~(IRExpression a)

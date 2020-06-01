@@ -1,13 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using LibDerailer.CCodeGen.Statements.Expressions;
+using LibDerailer.IR.Types;
 
 namespace LibDerailer.IR.Expressions
 {
     public class IRConversionExpression : IRExpression
     {
-        public IRConversionOperator Operator { get; }
-
         private IRExpression _operand;
 
         public IRExpression Operand
@@ -15,28 +14,23 @@ namespace LibDerailer.IR.Expressions
             get => _operand;
             set
             {
-                if (Operator == IRConversionOperator.Trunc && value.Type < Type)
-                    throw new IRTypeException();
-                if (Operator != IRConversionOperator.Trunc && value.Type > Type)
+                if (!(value.Type is IRPrimitive opPrim))
                     throw new IRTypeException();
                 _operand = value;
             }
         }
 
-        public IRConversionExpression(IRType type, IRConversionOperator op, IRExpression operand)
+        public IRConversionExpression(IRType type, IRExpression operand)
             : base(type)
         {
-            if (op == IRConversionOperator.Trunc && operand.Type < type)
-                throw new IRTypeException();
-            if (op != IRConversionOperator.Trunc && operand.Type > type)
+            if (!(type is IRPrimitive primType) || !(operand.Type is IRPrimitive opPrim))
                 throw new IRTypeException();
 
-            Operator = op;
             Operand  = operand;
         }
 
         public override IRExpression CloneComplete()
-            => new IRConversionExpression(Type, Operator, Operand.CloneComplete());
+            => new IRConversionExpression(Type, Operand.CloneComplete());
 
         public override void Substitute(IRVariable variable, IRExpression expression)
         {
@@ -50,22 +44,10 @@ namespace LibDerailer.IR.Expressions
             => Operand.GetAllVariables();
 
         public override CExpression ToCExpression()
-        {
-            switch (Operator)
-            {
-                case IRConversionOperator.Sext:
-                    return new CCast(Type.ToCType(true), Operand.ToCExpression());
-                case IRConversionOperator.Zext:
-                case IRConversionOperator.Trunc:
-                    return new CCast(Type.ToCType(false), Operand.ToCExpression());
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
-        }
+            => new CCast(Type.ToCType(), Operand.ToCExpression());
 
         public override bool Equals(object obj)
             => obj is IRConversionExpression exp &&
-               exp.Operator == Operator &&
                exp.Type == Type &&
                exp.Operand.Equals(Operand);
     }

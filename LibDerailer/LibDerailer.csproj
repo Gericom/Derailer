@@ -132,7 +132,6 @@
     <Compile Include="IR\Expressions\IRCallExpression.cs" />
     <Compile Include="IR\Expressions\IRRegisterVariable.cs" />
     <Compile Include="IR\Expressions\IRStackVariable.cs" />
-    <Compile Include="IR\Expressions\IRTypeUtil.cs" />
     <Compile Include="IR\Expressions\IRVariable.cs" />
     <Compile Include="IR\FxMul.cs" />
     <Compile Include="IR\Instructions\IRAssignment.cs" />
@@ -149,7 +148,6 @@
     <Compile Include="IR\Expressions\IRConversionOperator.cs" />
     <Compile Include="IR\Expressions\IRExpression.cs" />
     <Compile Include="IR\Instructions\IRInstruction.cs" />
-    <Compile Include="IR\Expressions\IRType.cs" />
     <Compile Include="IR\Expressions\IRTypeException.cs" />
     <Compile Include="IR\Expressions\IRUnaryExpression.cs" />
     <Compile Include="IR\Expressions\IRUnaryOperator.cs" />
@@ -160,6 +158,10 @@
     <Compile Include="IO\IOUtil.cs" />
     <Compile Include="IR\IRContext.cs" />
     <Compile Include="IR\IRFunction.cs" />
+    <Compile Include="IR\Types\IRPointer.cs" />
+    <Compile Include="IR\Types\IRPrimitive.cs" />
+    <Compile Include="IR\Types\IRStruct.cs" />
+    <Compile Include="IR\Types\IRType.cs" />
     <Compile Include="Machine\IORegisterField.cs" />
     <Compile Include="Machine\IORegister.cs" />
     <Compile Include="Machine\MemoryMap.cs" />

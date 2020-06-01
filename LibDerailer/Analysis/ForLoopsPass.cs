@@ -145,8 +145,10 @@ namespace LibDerailer.Analysis
                 block.LoopType = LoopType.For;
 
                 //move update of loop var to end of latch block
-                var loopVarDef = condVarDefs.First(v => v.ParentBlock == block.LatchNode);
-                block.LatchNode.Instructions.Remove(loopVarDef);
+                if(condVarDefs.Length != 2)
+                    throw new Exception();
+                var loopVarDef = condVarDefs.First(v => v is IRAssignment && v.ParentBlock.LoopHead == block);//v.ParentBlock == block.LatchNode);
+                loopVarDef.ParentBlock.Instructions.Remove(loopVarDef);
                 block.LatchNode.Instructions.Insert(block.LatchNode.Instructions.Count - 1, loopVarDef);
             }
         }

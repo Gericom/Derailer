@@ -8,6 +8,7 @@ using LibDerailer.CCodeGen.Statements.Expressions;
 using LibDerailer.IR;
 using LibDerailer.IR.Expressions;
 using LibDerailer.IR.Instructions;
+using LibDerailer.IR.Types;
 
 namespace LibDerailer.CodeGraph.Nodes
 {
@@ -241,26 +242,23 @@ namespace LibDerailer.CodeGraph.Nodes
                 case ArmInstructionId.ARM_INS_LDRB:
                 case ArmInstructionId.ARM_INS_LDRSB:
                 {
-                    bool   signed = false;
-                    IRType type   = IRType.Void;
+                    IRType type = IRPrimitive.Void;
                     switch (Instruction.Id)
                     {
                         case ArmInstructionId.ARM_INS_LDR:
-                            type = IRType.I32;
+                            type = IRPrimitive.U32;
                             break;
                         case ArmInstructionId.ARM_INS_LDRH:
-                            type = IRType.I16;
+                            type = IRPrimitive.U16;
                             break;
                         case ArmInstructionId.ARM_INS_LDRSH:
-                            type   = IRType.I16;
-                            signed = true;
+                            type = IRPrimitive.S16;
                             break;
                         case ArmInstructionId.ARM_INS_LDRB:
-                            type = IRType.I8;
+                            type = IRPrimitive.U8;
                             break;
                         case ArmInstructionId.ARM_INS_LDRSB:
-                            type   = IRType.I8;
-                            signed = true;
+                            type = IRPrimitive.S8;
                             break;
                     }
 
@@ -278,19 +276,15 @@ namespace LibDerailer.CodeGraph.Nodes
                     if (Instruction.Details.Operands[1].Memory.Index == null &&
                         Instruction.Details.Operands[1].Memory.Displacement == 0)
                     {
-                        IRExpression deref = new IRDerefExpression(type, signed, GetIROperand(context, 1));
-                        if (type != IRType.I32)
-                            deref = signed ? deref.Sext(IRType.I32) : deref.Zext(IRType.I32);
-                        yield return new IRAssignment(parentBlock, GetIROperand(context, 0), deref);
+                        yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
+                            new IRDerefExpression(type, GetIROperand(context, 1)).Cast(IRPrimitive.U32));
                         break;
                     }
                     else if (Instruction.Details.Operands[1].Memory.Index == null)
                     {
-                        IRExpression deref = new IRDerefExpression(type, signed,
-                            GetIROperand(context, 1) + Instruction.Details.Operands[1].Memory.Displacement);
-                        if (type != IRType.I32)
-                            deref = signed ? deref.Sext(IRType.I32) : deref.Zext(IRType.I32);
-                        yield return new IRAssignment(parentBlock, GetIROperand(context, 0), deref);
+                        var deref = new IRDerefExpression(type,
+                            GetIROperand(context, 1) + (uint)Instruction.Details.Operands[1].Memory.Displacement);
+                        yield return new IRAssignment(parentBlock, GetIROperand(context, 0), deref.Cast(IRPrimitive.U32));
                         break;
                     }
                     else
@@ -299,11 +293,9 @@ namespace LibDerailer.CodeGraph.Nodes
                             (Instruction.Details.Operands[1].ShiftOperation == ArmShiftOperation.ARM_SFT_LSL &&
                              Instruction.Details.Operands[1].ShiftValue == 0))
                         {
-                            IRExpression deref = new IRDerefExpression(type, signed,
+                            var deref = new IRDerefExpression(type,
                                 GetIROperand(context, 1) + GetIROperand(context, 2));
-                            if (type != IRType.I32)
-                                deref = signed ? deref.Sext(IRType.I32) : deref.Zext(IRType.I32);
-                            yield return new IRAssignment(parentBlock, GetIROperand(context, 0), deref);
+                            yield return new IRAssignment(parentBlock, GetIROperand(context, 0), deref.Cast(IRPrimitive.U32));
                             break;
                         }
                         else
@@ -314,17 +306,17 @@ namespace LibDerailer.CodeGraph.Nodes
                 case ArmInstructionId.ARM_INS_STRH:
                 case ArmInstructionId.ARM_INS_STRB:
                 {
-                    IRType type = IRType.Void;
+                    var type = IRPrimitive.Void;
                     switch (Instruction.Id)
                     {
                         case ArmInstructionId.ARM_INS_STR:
-                            type = IRType.I32;
+                            type = IRPrimitive.U32;
                             break;
                         case ArmInstructionId.ARM_INS_STRH:
-                            type = IRType.I16;
+                            type = IRPrimitive.U16;
                             break;
                         case ArmInstructionId.ARM_INS_STRB:
-                            type = IRType.I8;
+                            type = IRPrimitive.U8;
                             break;
                     }
 
@@ -343,14 +335,14 @@ namespace LibDerailer.CodeGraph.Nodes
                     if (Instruction.Details.Operands[1].Memory.Index == null &&
                         Instruction.Details.Operands[1].Memory.Displacement == 0)
                     {
-                        yield return new IRStore(parentBlock, true, type, false, GetIROperand(context, 1),
+                        yield return new IRStore(parentBlock, type, GetIROperand(context, 1),
                             GetIROperand(context, 0));
                         break;
                     }
                     else if (Instruction.Details.Operands[1].Memory.Index == null)
                     {
-                        yield return new IRStore(parentBlock, true, type, false,
-                            GetIROperand(context, 1) + Instruction.Details.Operands[1].Memory.Displacement,
+                        yield return new IRStore(parentBlock, type,
+                            GetIROperand(context, 1) + (uint)Instruction.Details.Operands[1].Memory.Displacement,
                             GetIROperand(context, 0));
                         break;
                     }
@@ -360,7 +352,7 @@ namespace LibDerailer.CodeGraph.Nodes
                             (Instruction.Details.Operands[1].ShiftOperation == ArmShiftOperation.ARM_SFT_LSL &&
                              Instruction.Details.Operands[1].ShiftValue == 0))
                         {
-                            yield return new IRStore(parentBlock, true, type, false,
+                            yield return new IRStore(parentBlock, type,
                                 GetIROperand(context, 1) + GetIROperand(context, 2),
                                 GetIROperand(context, 0));
                             break;
@@ -373,7 +365,7 @@ namespace LibDerailer.CodeGraph.Nodes
                     yield return new IRAssignment(parentBlock,
                         context.VariableMapping[VariableDefs
                             .First(v => v.Location == VariableLocation.Register && v.Address == 0)],
-                        new IRCallExpression(IRType.I32, $"sub_{Instruction.Details.Operands[0].Immediate:X08}",
+                        new IRCallExpression(IRPrimitive.U32, $"sub_{Instruction.Details.Operands[0].Immediate:X08}",
                             context.VariableMapping[VariableUses
                                 .First(v => v.Location == VariableLocation.Register && v.Address == 0)],
                             context.VariableMapping[VariableUses
@@ -390,7 +382,7 @@ namespace LibDerailer.CodeGraph.Nodes
                     yield return new IRAssignment(parentBlock,
                         context.VariableMapping[VariableDefs
                             .First(v => v.Location == VariableLocation.Register && v.Address == 0)],
-                        new IRCallExpression(IRType.I32, ((Variable) Operands[0].op).Name,
+                        new IRCallExpression(IRPrimitive.U32, ((Variable) Operands[0].op).Name,
                             context.VariableMapping[VariableUses
                                 .First(v => v.Location == VariableLocation.Register && v.Address == 0)],
                             context.VariableMapping[VariableUses
@@ -431,9 +423,9 @@ namespace LibDerailer.CodeGraph.Nodes
                     switch (condition)
                     {
                         case ArmConditionCode.ARM_CC_EQ:
-                            return GetIROperand(context, 0) == 0;
+                            return GetIROperand(context, 0).Cast(IRPrimitive.U32) == 0u;
                         case ArmConditionCode.ARM_CC_NE:
-                            return GetIROperand(context, 0) != 0;
+                            return GetIROperand(context, 0).Cast(IRPrimitive.U32) != 0u;
                         case ArmConditionCode.ARM_CC_HS:
                         case ArmConditionCode.ARM_CC_LO:
                         case ArmConditionCode.ARM_CC_MI:

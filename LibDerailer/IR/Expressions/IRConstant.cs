@@ -1,5 +1,6 @@
 ﻿using System;
 using LibDerailer.CCodeGen.Statements.Expressions;
+using LibDerailer.IR.Types;
 
 namespace LibDerailer.IR.Expressions
 {
@@ -18,19 +19,23 @@ namespace LibDerailer.IR.Expressions
             switch (value)
             {
                 case bool _:
-                    return IRType.I1;
+                    return IRPrimitive.Bool;
                 case sbyte _:
+                    return IRPrimitive.S8;
                 case byte _:
-                    return IRType.I8;
+                    return IRPrimitive.U8;
                 case short _:
+                    return IRPrimitive.S16;
                 case ushort _:
-                    return IRType.I16;
+                    return IRPrimitive.U16;
                 case int _:
+                    return IRPrimitive.S32;
                 case uint _:
-                    return IRType.I32;
+                    return IRPrimitive.U32;
                 case long _:
+                    return IRPrimitive.S64;
                 case ulong _:
-                    return IRType.I64;
+                    return IRPrimitive.U64;
                 default:
                     throw new IRTypeException();
             }

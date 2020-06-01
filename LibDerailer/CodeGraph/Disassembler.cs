@@ -16,6 +16,7 @@ using LibDerailer.IO;
 using LibDerailer.IR;
 using LibDerailer.IR.Expressions;
 using LibDerailer.IR.Instructions;
+using LibDerailer.IR.Types;
 
 namespace LibDerailer.CodeGraph
 {
@@ -664,9 +665,10 @@ namespace LibDerailer.CodeGraph
                 }
                 else
                     funcExit = new FunctionExit(null);
-              
+
                 epilogue.Instructions.Clear();
                 epilogue.Instructions.Add(funcExit);
+                epilogue.Instructions[0].OrderIndex = orderIndex++;
             }
 
             ResolveDefUseRelations(func);
@@ -709,12 +711,12 @@ namespace LibDerailer.CodeGraph
             irContext.Function = irFunc;
 
             foreach (var regVar in regVars)
-                irContext.VariableMapping.Add(regVar, new IRRegisterVariable(IRType.I32, regVar.Name));
+                irContext.VariableMapping.Add(regVar, new IRRegisterVariable(IRPrimitive.U32, regVar.Name));
             // foreach (var regVar in func.MachineRegisterVariables)
             //     irContext.VariableMapping.Add(regVar, new IRRegisterVariable(IRType.I32, regVar.Name));
 
             foreach (var stackVar in func.StackVariables)
-                irContext.VariableMapping.Add(stackVar, new IRStackVariable(IRType.I32, stackVar.Name));
+                irContext.VariableMapping.Add(stackVar, new IRStackVariable(IRPrimitive.U32, stackVar.Name));
 
             foreach (var basicBlock in func.BasicBlocks)
             {
@@ -893,6 +895,8 @@ namespace LibDerailer.CodeGraph
                         var latch     = curBBlock.LatchNode;
                         var predicate = latch.BlockJump.Condition.ToCExpression();
                         var update    = body.Statements.Last();
+                        if (!(update is CMethodCall m && m.IsOperator && m.Name == "="))
+                            throw new Exception("Expected assignment as for update");
                         body.Statements.Remove(update);
                         cBlock.Statements.Add(new CFor(null, update, predicate, body));
                     }
@@ -902,45 +906,74 @@ namespace LibDerailer.CodeGraph
                 else if (curBBlock.IfFollow != null && (!loopBody || head.LatchNode != curBBlock) &&
                          !curBBlock.IsLatchNode)
                 {
-                    cBlock.Statements.AddRange(curBBlock.Instructions.SelectMany(i => i.ToCCode()));
-                    if (curBBlock.Successors.Contains(curBBlock.IfFollow))
+                    if (curBBlock.LoopHead != null && curBBlock.BlockJump.Destination == curBBlock.LoopHead.LoopFollow)
                     {
-                        var bodyBlockStart = curBBlock.Successors.First(s => s != curBBlock.BlockJump.Destination);
-                        var predicate      = curBBlock.BlockJump.Condition.InverseCondition().ToCExpression();
-                        var body           = TransformBlocks(func, bodyBlockStart, curBBlock.IfFollow);
-
-                        cBlock.Statements.Add(new CIf(predicate, body));
-
-                        next = curBBlock.BlockJump.Destination;
+                        var predicate = curBBlock.BlockJump.Condition.ToCExpression();
+                        cBlock.Statements.Add(new CIf(predicate, new CBlock(new CBreak())));
+                        next = curBBlock.Successors.First(s => s != curBBlock.LoopHead.LoopFollow);
+                    }
+                    else if (curBBlock.LoopHead != null &&
+                             curBBlock.LoopHead.LoopType == LoopType.For &&
+                             curBBlock.BlockJump.Destination == curBBlock.LoopHead.LatchNode &&
+                             curBBlock.Successors.First(s => s != curBBlock.LoopHead.LatchNode).ReversePostOrderIndex <
+                             curBBlock.LoopHead.LatchNode.ReversePostOrderIndex)
+                    {
+                        var predicate = curBBlock.BlockJump.Condition.ToCExpression();
+                        cBlock.Statements.Add(new CIf(predicate, new CBlock(new CContinue())));
+                        next = curBBlock.Successors.First(s => s != curBBlock.LoopHead.LatchNode);
                     }
                     else
                     {
-                        var elseBodyBlockStart = curBBlock.BlockJump.Destination;
-                        var ifBodyBlockStart   = curBBlock.Successors.First(s => s != elseBodyBlockStart);
-
-                        CExpression predicate;
-                        if (ifBodyBlockStart.OrderIndex > elseBodyBlockStart.OrderIndex)
+                        cBlock.Statements.AddRange(curBBlock.Instructions.SelectMany(i => i.ToCCode()));
+                        if (curBBlock.Successors.Contains(curBBlock.IfFollow))
                         {
-                            var tmp = ifBodyBlockStart;
-                            ifBodyBlockStart   = elseBodyBlockStart;
-                            elseBodyBlockStart = tmp;
-                            predicate          = curBBlock.BlockJump.Condition.ToCExpression();
+                            var bodyBlockStart = curBBlock.Successors.First(s => s != curBBlock.BlockJump.Destination);
+
+                            CExpression predicate;
+                            if (bodyBlockStart.OrderIndex > curBBlock.BlockJump.Destination.OrderIndex)
+                            {
+                                next           = bodyBlockStart;
+                                bodyBlockStart = curBBlock.BlockJump.Destination;
+                                predicate      = curBBlock.BlockJump.Condition.ToCExpression();
+                            }
+                            else
+                            {
+                                predicate = curBBlock.BlockJump.Condition.InverseCondition().ToCExpression();
+                                next      = curBBlock.BlockJump.Destination;
+                            }
+
+                            var body = TransformBlocks(func, bodyBlockStart, curBBlock.IfFollow);
+                            cBlock.Statements.Add(new CIf(predicate, body));
                         }
                         else
-                            predicate = curBBlock.BlockJump.Condition.InverseCondition().ToCExpression();
-
-                        var ifBody   = TransformBlocks(func, ifBodyBlockStart, curBBlock.IfFollow);
-                        var elseBody = TransformBlocks(func, elseBodyBlockStart, curBBlock.IfFollow);
-
-                        if (ifBody.Statements.Last() is CReturn)
                         {
-                            cBlock.Statements.Add(new CIf(predicate, ifBody));
-                            cBlock.Statements.AddRange(elseBody.Statements);
-                        }
-                        else
-                            cBlock.Statements.Add(new CIf(predicate, ifBody, elseBody));
+                            var elseBodyBlockStart = curBBlock.BlockJump.Destination;
+                            var ifBodyBlockStart   = curBBlock.Successors.First(s => s != elseBodyBlockStart);
 
-                        next = curBBlock.IfFollow;
+                            CExpression predicate;
+                            if (ifBodyBlockStart.OrderIndex > elseBodyBlockStart.OrderIndex)
+                            {
+                                var tmp = ifBodyBlockStart;
+                                ifBodyBlockStart   = elseBodyBlockStart;
+                                elseBodyBlockStart = tmp;
+                                predicate          = curBBlock.BlockJump.Condition.ToCExpression();
+                            }
+                            else
+                                predicate = curBBlock.BlockJump.Condition.InverseCondition().ToCExpression();
+
+                            var ifBody   = TransformBlocks(func, ifBodyBlockStart, curBBlock.IfFollow);
+                            var elseBody = TransformBlocks(func, elseBodyBlockStart, curBBlock.IfFollow);
+
+                            if (ifBody.Statements.Last() is CReturn)
+                            {
+                                cBlock.Statements.Add(new CIf(predicate, ifBody));
+                                cBlock.Statements.AddRange(elseBody.Statements);
+                            }
+                            else
+                                cBlock.Statements.Add(new CIf(predicate, ifBody, elseBody));
+
+                            next = curBBlock.IfFollow;
+                        }
                     }
                 }
                 else

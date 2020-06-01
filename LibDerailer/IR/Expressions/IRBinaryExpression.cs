@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using LibDerailer.CCodeGen.Statements.Expressions;
+using LibDerailer.IR.Types;
 
 namespace LibDerailer.IR.Expressions
 {
@@ -80,11 +81,11 @@ namespace LibDerailer.IR.Expressions
                 case IRBinaryOperator.Sub:
                     return OperandA.ToCExpression() - OperandB.ToCExpression();
                 case IRBinaryOperator.And:
-                    if (Type == IRType.I1)
+                    if (Type == IRPrimitive.Bool)
                         return OperandA.ToCExpression().BooleanAnd(OperandB.ToCExpression());
                     return OperandA.ToCExpression() & OperandB.ToCExpression();
                 case IRBinaryOperator.Or:
-                    if (Type == IRType.I1)
+                    if (Type == IRPrimitive.Bool)
                         return OperandA.ToCExpression().BooleanOr(OperandB.ToCExpression());
                     return OperandA.ToCExpression() | OperandB.ToCExpression();
                 case IRBinaryOperator.Xor:
@@ -94,7 +95,7 @@ namespace LibDerailer.IR.Expressions
                 case IRBinaryOperator.Lsr:
                     return OperandA.ToCExpression().ShiftRight(OperandB.ToCExpression());
                 case IRBinaryOperator.Asr:
-                    return new CCast(OperandA.Type.ToCType(true), OperandA.ToCExpression()).ShiftRight(
+                    return new CCast(((IRPrimitive)OperandA.Type).ToSigned().ToCType(), OperandA.ToCExpression()).ShiftRight(
                         OperandB.ToCExpression());
                 case IRBinaryOperator.Mul:
                     return OperandA.ToCExpression() * OperandB.ToCExpression();

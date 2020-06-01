@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using LibDerailer.CCodeGen.Statements.Expressions;
+using LibDerailer.IR.Types;
 
 namespace LibDerailer.IR.Expressions
 {
@@ -35,7 +36,7 @@ namespace LibDerailer.IR.Expressions
         }
 
         public IRComparisonExpression(IRComparisonOperator op, IRExpression operandA, IRExpression operandB)
-            : base(IRType.I1)
+            : base(IRPrimitive.Bool)
         {
             if (operandA.Type != operandB.Type)
                 throw new IRTypeException();
@@ -78,29 +79,29 @@ namespace LibDerailer.IR.Expressions
                 case IRComparisonOperator.NotEqual:
                     return OperandA.ToCExpression() != OperandB.ToCExpression();
                 case IRComparisonOperator.Less:
-                    return new CCast(OperandA.Type.ToCType(true), OperandA.ToCExpression()) <
-                           new CCast(OperandB.Type.ToCType(true), OperandB.ToCExpression());
+                    return new CCast(((IRPrimitive)OperandA.Type).ToSigned().ToCType(), OperandA.ToCExpression()) <
+                           new CCast(((IRPrimitive)OperandB.Type).ToSigned().ToCType(), OperandB.ToCExpression());
                 case IRComparisonOperator.LessEqual:
-                    return new CCast(OperandA.Type.ToCType(true), OperandA.ToCExpression()) <=
-                           new CCast(OperandB.Type.ToCType(true), OperandB.ToCExpression());
+                    return new CCast(((IRPrimitive)OperandA.Type).ToSigned().ToCType(), OperandA.ToCExpression()) <=
+                           new CCast(((IRPrimitive)OperandB.Type).ToSigned().ToCType(), OperandB.ToCExpression());
                 case IRComparisonOperator.Greater:
-                    return new CCast(OperandA.Type.ToCType(true), OperandA.ToCExpression()) >
-                           new CCast(OperandB.Type.ToCType(true), OperandB.ToCExpression());
+                    return new CCast(((IRPrimitive)OperandA.Type).ToSigned().ToCType(), OperandA.ToCExpression()) >
+                           new CCast(((IRPrimitive)OperandB.Type).ToSigned().ToCType(), OperandB.ToCExpression());
                 case IRComparisonOperator.GreaterEqual:
-                    return new CCast(OperandA.Type.ToCType(true), OperandA.ToCExpression()) <=
-                           new CCast(OperandB.Type.ToCType(true), OperandB.ToCExpression());
+                    return new CCast(((IRPrimitive)OperandA.Type).ToSigned().ToCType(), OperandA.ToCExpression()) <=
+                           new CCast(((IRPrimitive)OperandB.Type).ToSigned().ToCType(), OperandB.ToCExpression());
                 case IRComparisonOperator.UnsignedLess:
-                    return new CCast(OperandA.Type.ToCType(false), OperandA.ToCExpression()) <
-                           new CCast(OperandB.Type.ToCType(false), OperandB.ToCExpression());
+                    return new CCast(((IRPrimitive)OperandA.Type).ToUnsigned().ToCType(), OperandA.ToCExpression()) <
+                           new CCast(((IRPrimitive)OperandB.Type).ToUnsigned().ToCType(), OperandB.ToCExpression());
                 case IRComparisonOperator.UnsignedLessEqual:
-                    return new CCast(OperandA.Type.ToCType(false), OperandA.ToCExpression()) <=
-                           new CCast(OperandB.Type.ToCType(false), OperandB.ToCExpression());
+                    return new CCast(((IRPrimitive)OperandA.Type).ToUnsigned().ToCType(), OperandA.ToCExpression()) <=
+                           new CCast(((IRPrimitive)OperandB.Type).ToUnsigned().ToCType(), OperandB.ToCExpression());
                 case IRComparisonOperator.UnsignedGreater:
-                    return new CCast(OperandA.Type.ToCType(false), OperandA.ToCExpression()) >
-                           new CCast(OperandB.Type.ToCType(false), OperandB.ToCExpression());
+                    return new CCast(((IRPrimitive)OperandA.Type).ToUnsigned().ToCType(), OperandA.ToCExpression()) >
+                           new CCast(((IRPrimitive)OperandB.Type).ToUnsigned().ToCType(), OperandB.ToCExpression());
                 case IRComparisonOperator.UnsignedGreaterEqual:
-                    return new CCast(OperandA.Type.ToCType(false), OperandA.ToCExpression()) >=
-                           new CCast(OperandB.Type.ToCType(false), OperandB.ToCExpression());
+                    return new CCast(((IRPrimitive)OperandA.Type).ToUnsigned().ToCType(), OperandA.ToCExpression()) >=
+                           new CCast(((IRPrimitive)OperandB.Type).ToUnsigned().ToCType(), OperandB.ToCExpression());
                 default:
                     throw new ArgumentOutOfRangeException();
             }

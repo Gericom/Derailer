@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using LibDerailer.CCodeGen.Statements.Expressions;
+using LibDerailer.IR.Types;
 
 namespace LibDerailer.IR.Expressions
 {
@@ -52,7 +53,7 @@ namespace LibDerailer.IR.Expressions
                 case IRUnaryOperator.Neg:
                     return -Operand.ToCExpression();
                 case IRUnaryOperator.Not:
-                    if (Type == IRType.I1)
+                    if (Type == IRPrimitive.Void)
                         return !Operand.ToCExpression();
                     return ~Operand.ToCExpression();
                 default:

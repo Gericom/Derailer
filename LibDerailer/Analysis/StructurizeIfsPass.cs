@@ -34,7 +34,7 @@ namespace LibDerailer.Analysis
                         followInEdges = followInEdgesNew;
                     }
                 }
-
+            
                 if (follow != null && followInEdges > 1)
                 {
                     block.IfFollow = follow;

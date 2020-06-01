@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using LibDerailer.CCodeGen.Statements.Expressions;
 using LibDerailer.IR.Instructions;
+using LibDerailer.IR.Types;
 
 namespace LibDerailer.IR.Expressions
 {
@@ -12,13 +13,10 @@ namespace LibDerailer.IR.Expressions
     {
         public string Name { get; set; }
 
-        // public HashSet<IRInstruction> Defs { get; } = new HashSet<IRInstruction>();
-        // public HashSet<IRInstruction> Uses { get; } = new HashSet<IRInstruction>();
-
         public IRVariable(IRType type, string name)
             : base(type)
         {
-            if (type == IRType.Void)
+            if (type == IRPrimitive.Void)
                 throw new IRTypeException();
             Name = name;
         }

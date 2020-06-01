@@ -7,6 +7,7 @@ using LibDerailer.CCodeGen;
 using LibDerailer.CCodeGen.Statements;
 using LibDerailer.CCodeGen.Statements.Expressions;
 using LibDerailer.IR.Expressions;
+using LibDerailer.IR.Types;
 
 namespace LibDerailer.IR.Instructions
 {
@@ -16,16 +17,13 @@ namespace LibDerailer.IR.Instructions
         public IRExpression Address { get; set; }
         public IRExpression Operand { get; set; }
 
-        public bool IsSigned { get; set; }
 
-        public IRStore(IRBasicBlock parentBlock, bool isStore, IRType type, bool isSigned, IRExpression address,
-            IRExpression operand)
+        public IRStore(IRBasicBlock parentBlock, IRType type, IRExpression address, IRExpression operand)
             : base(parentBlock)
         {
-            if (type == IRType.Void || type == IRType.I1)
+            if (type == IRPrimitive.Void || type == IRPrimitive.Bool)
                 throw new IRTypeException();
             Type     = type;
-            IsSigned = isSigned;
             Address  = address;
             Operand  = operand;
             Uses.UnionWith(Address.GetAllVariables());
@@ -35,7 +33,7 @@ namespace LibDerailer.IR.Instructions
         public override IEnumerable<CStatement> ToCCode()
         {
             yield return CExpression.Assign(
-                CExpression.Deref(new CCast(new CType(Type.ToCType(IsSigned), true), Address.ToCExpression())),
+                CExpression.Deref(new CCast(new CType(Type.ToCType(), true), Address.ToCExpression())),
                 Operand.ToCExpression());
         }
 
