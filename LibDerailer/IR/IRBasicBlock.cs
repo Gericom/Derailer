@@ -41,6 +41,9 @@ namespace LibDerailer.IR
         public HashSet<IRVariable> LiveIns  { get; } = new HashSet<IRVariable>();
         public HashSet<IRVariable> LiveOuts { get; } = new HashSet<IRVariable>();
 
+        public IRRegisterVariable CaseRegisterVariable { get; set; }
+        public List<(IRConstant, IRBasicBlock)> CaseSuccessors { get; } = new List<(IRConstant, IRBasicBlock)>();
+
         public IRInstruction[] FindDefs(IRInstruction instruction, IRVariable v)
             => FindDefs(Instructions.IndexOf(instruction), v);
 

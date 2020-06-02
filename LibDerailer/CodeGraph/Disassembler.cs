@@ -749,6 +749,7 @@ namespace LibDerailer.CodeGraph
             new ExpressionPropagator().Run(irContext);
             new DeadCodeEliminator().Run(irContext);
             new StructurizeLoopsPass().Run(irContext);
+            new CondenseMiniSwitchesPass().Run(irContext);
             new StructurizeIfsPass().Run(irContext);
             new CompoundConditionsPass().Run(irContext);
             new ForLoopsPass().Run(irContext);

@@ -63,6 +63,7 @@
     <Compile Include="Analysis\LifetimeAnalyser.cs" />
     <Compile Include="Analysis\StructurizeIfsPass.cs" />
     <Compile Include="Analysis\StructurizeLoopsPass.cs" />
+    <Compile Include="Analysis\CondenseMiniSwitchesPass.cs" />
     <Compile Include="CCodeGen\CMethod.cs" />
     <Compile Include="CCodeGen\AstUtil.cs" />
     <Compile Include="CCodeGen\CBlock.cs" />
