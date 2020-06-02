@@ -72,6 +72,7 @@
     <Compile Include="CCodeGen\Statements\CDeclaration.cs" />
     <Compile Include="CCodeGen\Statements\CDoWhile.cs" />
     <Compile Include="CCodeGen\Statements\CReturn.cs" />
+    <Compile Include="CCodeGen\Statements\CSwitch.cs" />
     <Compile Include="CCodeGen\Statements\Expressions\CLiteral.cs" />
     <Compile Include="CCodeGen\Statements\CLabel.cs" />
     <Compile Include="CCodeGen\Statements\CGoto.cs" />

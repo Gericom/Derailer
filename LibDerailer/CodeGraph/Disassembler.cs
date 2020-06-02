@@ -991,6 +991,17 @@ namespace LibDerailer.CodeGraph
                         break;
                     else
                     {
+                        if (curBBlock.SwitchCases.Count == 0)
+                            throw new Exception();
+                        var cSwitch = new CSwitch(curBBlock.SwitchVariable.ToCExpression());
+                        foreach (var (constant, caseBB) in curBBlock.SwitchCases)
+                        {
+                            var body = TransformBlocks(func, caseBB, curBBlock.SwitchFollow, false);
+                            cSwitch.Cases.Add((constant?.ToCExpression() as CLiteral, body));
+                        }
+
+                        cBlock.Statements.Add(cSwitch);
+                        next = curBBlock.SwitchFollow;
                     }
                 }
 

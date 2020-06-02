@@ -13,7 +13,7 @@ namespace LibDerailer.Analysis
     // Structurizes mini loops into standard case tables
     public class CondenseMiniSwitchesPass : AnalysisPass
     {
-        bool IsInstructionSwitchHead(IRJump instr, ref IRRegisterVariable sw_reg, bool initial)
+        bool IsInstructionSwitchHead(IRJump instr, ref IRVariable switchVar, bool initial)
         {
             if (instr is null)
                 return false;
@@ -21,47 +21,43 @@ namespace LibDerailer.Analysis
             if (initial)
                 return instr.Condition is null;
 
-            var cmp = instr.Condition as IRComparisonExpression;
-            if (cmp is null)
+            if (!(instr.Condition is IRComparisonExpression cmp))
                 return false;
 
             if (cmp.Operator == IRComparisonOperator.Equal &&
-                cmp.OperandA is IRRegisterVariable &&
+                cmp.OperandA is IRVariable &&
                 cmp.OperandB is IRConstant)
             {
-                var op_a = cmp.OperandA as IRRegisterVariable;
-                if (sw_reg is null)
+                var opA = cmp.OperandA as IRVariable;
+                if (switchVar is null)
                 {
-                    sw_reg = op_a;
+                    switchVar = opA;
                     return true;
                 }
-                else
-                {
-                    return op_a.Equals(sw_reg);
-                }
+
+                return opA.Equals(switchVar);
             }
-            else
-            {
-                return false;
-            }
+
+            return false;
         }
 
         // At this point, we know at minimum we have
         // cmp rA, x; beq; b;
-        void HandleSwitchHead(IRContext context, IRRegisterVariable rv, int start, int size)
+        void HandleSwitchHead(IRContext context, IRVariable switchVar, int start, int size)
         {
             // If only one case exists, we probably don't care about it?
-            if (size <= 2) return;
+            if (size <= 2)
+                return;
 
             File.WriteAllText(@"preswitch_basicblocks.txt", context.Function.BasicBlockGraphToDot());
 
-            var blocks_sorted = context.Function.BasicBlocks.OrderBy(x => x.OrderIndex);
+            var sortedBlocks = context.Function.BasicBlocks.OrderBy(x => x.OrderIndex);
 
-            var blocks = blocks_sorted.Skip(start).Take(size);         
-            
+            var blocks = sortedBlocks.Skip(start).Take(size).ToArray();
+
             // All blocks only have one instruction
-            var cases = from block in blocks.OrderBy(x => (x.Instructions[0] as IRJump).Destination.OrderIndex)
-                        select block.Instructions[0];
+            var cases = from block in blocks.OrderBy(x => ((IRJump) x.Instructions[0]).Destination.OrderIndex)
+                select block.Instructions[0];
             var head = blocks.First();
 
             // The new head, being the first block, naturally inherits the proper predecessors
@@ -77,13 +73,13 @@ namespace LibDerailer.Analysis
             }
 
             // Collapse into switch table (modify the final, unconditional branch)
-            head.CaseRegisterVariable = rv;
-            foreach (var case_ in cases)
+            head.SwitchVariable = switchVar;
+            foreach (var switchCase in cases)
             {
-                var jump = case_ as IRJump;
+                var jump = switchCase as IRJump;
 
-                head.CaseSuccessors.Add((jump.Condition is null ? null : (jump.Condition as IRComparisonExpression).OperandB as IRConstant,
-                    jump.Destination));
+                head.SwitchCases.Add(
+                    ((jump.Condition as IRComparisonExpression)?.OperandB as IRConstant, jump.Destination));
                 // This will be true for the initial case
                 if (!head.Successors.Contains(jump.Destination))
                     head.Successors.Add(jump.Destination);
@@ -97,34 +93,54 @@ namespace LibDerailer.Analysis
                 block.Instructions.Clear();
             }
 
+            //find the follow node
+            IRBasicBlock follow        = null;
+            int          followInEdges = 0;
+            for (int i = head.ReversePostOrderIndex + 1; i < context.Function.BasicBlocks.Count; i++)
+            {
+                var dominatedBlock = context.Function.BasicBlocks[i];
+                if (dominatedBlock.ImmediateDominator != head)
+                    continue;
+                int followInEdgesNew = dominatedBlock.Predecessors.Count - dominatedBlock.BackEdgeCount;
+                //if (followInEdgesNew >= followInEdges)
+                {
+                    follow        = dominatedBlock;
+                    followInEdges = followInEdgesNew;
+                }
+            }
+
+            head.SwitchFollow = follow;
+
             File.WriteAllText(@"switch_basicblocks.txt", context.Function.BasicBlockGraphToDot());
         }
+
         public override void Run(IRContext context)
         {
-            int sw_span = 0;
-            IRRegisterVariable sw_reg = null;
+            int        switchSpan = 0;
+            IRVariable switchVar  = null;
 
-            var blocks_sorted = context.Function.BasicBlocks.OrderBy(x => x.OrderIndex).ToArray();
+            var sortedBlocks = context.Function.BasicBlocks.OrderBy(x => x.OrderIndex).ToArray();
 
-            for (int i = blocks_sorted.Length - 1; i >= 0; --i)
+            for (int i = sortedBlocks.Length - 1; i >= 0; i--)
             {
-                var block = blocks_sorted[i];
+                var block        = sortedBlocks[i];
                 var instructions = block.Instructions;
 
-                if (instructions.Count == 1 && IsInstructionSwitchHead(instructions[0] as IRJump, ref sw_reg, sw_span == 0))
+                if (instructions.Count == 1 &&
+                    IsInstructionSwitchHead(instructions[0] as IRJump, ref switchVar, switchSpan == 0))
                 {
-                    ++sw_span;
+                    switchSpan++;
                     continue;
                 }
 
-                if (sw_span > 0)
-                    HandleSwitchHead(context, sw_reg, i, sw_span);
+                if (switchSpan > 0)
+                    HandleSwitchHead(context, switchVar, i, switchSpan);
 
-                sw_span = 0;
+                switchSpan = 0;
             }
 
-            if (sw_span > 0)
-                HandleSwitchHead(context, sw_reg, 0, sw_span);
+            if (switchSpan > 0)
+                HandleSwitchHead(context, switchVar, 0, switchSpan);
         }
     }
 }

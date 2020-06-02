@@ -185,6 +185,8 @@ namespace LibDerailer.CodeGraph.Nodes
             switch (Instruction.Id)
             {
                 case ArmInstructionId.ARM_INS_ADD:
+                    if (Instruction.Details.Operands[0].Register.Id == ArmRegisterId.ARM_REG_PC)
+                        yield break;
                     yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
                         GetIROperand(context, 1) + GetIRSecondOperand(context, 2));
                     break;

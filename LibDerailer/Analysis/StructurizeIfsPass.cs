@@ -18,7 +18,6 @@ namespace LibDerailer.Analysis
                 //and not some loop thingie
                 if (block.Successors.Count != 2 || block.BlockJump.IsLoopJump)
                     continue;
-                var          dominatedBlocks = new List<IRBasicBlock>();
                 IRBasicBlock follow          = null;
                 int          followInEdges   = 0;
                 for (int i = block.ReversePostOrderIndex + 1; i < context.Function.BasicBlocks.Count; i++)
@@ -26,7 +25,6 @@ namespace LibDerailer.Analysis
                     var dominatedBlock = context.Function.BasicBlocks[i];
                     if (dominatedBlock.ImmediateDominator != block)
                         continue;
-                    dominatedBlocks.Add(dominatedBlock);
                     int followInEdgesNew = dominatedBlock.Predecessors.Count - dominatedBlock.BackEdgeCount;
                     //if (followInEdgesNew >= followInEdges)
                     {
