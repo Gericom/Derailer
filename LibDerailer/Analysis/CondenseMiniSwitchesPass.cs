@@ -62,7 +62,19 @@ namespace LibDerailer.Analysis
             // All blocks only have one instruction
             var cases = from block in blocks.OrderBy(x => (x.Instructions[0] as IRJump).Destination.OrderIndex)
                         select block.Instructions[0];
-            var head = blocks.Last();
+            var head = blocks.First();
+
+            // The new head, being the first block, naturally inherits the proper predecessors
+            head.Successors.Clear();
+
+            // Only the successors of the final block matter
+            foreach (var succ in blocks.Last().Successors)
+            {
+                succ.Predecessors.Remove(blocks.Last());
+                succ.Predecessors.Add(head);
+
+                head.Successors.Add(succ);
+            }
 
             // Collapse into switch table (modify the final, unconditional branch)
             head.CaseRegisterVariable = rv;
@@ -72,31 +84,18 @@ namespace LibDerailer.Analysis
 
                 head.CaseSuccessors.Add((jump.Condition is null ? null : (jump.Condition as IRComparisonExpression).OperandB as IRConstant,
                     jump.Destination));
-                // This will be true for the default case
+                // This will be true for the initial case
                 if (!head.Successors.Contains(jump.Destination))
                     head.Successors.Add(jump.Destination);
             }
 
-            // The new head being the last block, naturally inherits the proper successors
-            head.Predecessors.Clear();
-            
-            // Only the predecessors of the first block matter
-            foreach (var pred in blocks.First().Predecessors)
-            {
-                pred.Successors.Remove(blocks.First());
-                pred.Successors.Add(head);
-
-                head.Predecessors.Add(pred);
-            }
-
-            // Update succession cache
-            foreach (var block in blocks.Take(size - 1))
+            // Orphan unused nodes
+            foreach (var block in blocks.Skip(1))
             {
                 block.Predecessors.Clear();
                 block.Successors.Clear();
                 block.Instructions.Clear();
             }
-
 
             File.WriteAllText(@"switch_basicblocks.txt", context.Function.BasicBlockGraphToDot());
         }
