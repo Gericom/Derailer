@@ -23,7 +23,7 @@ namespace LibDerailer.IR.Expressions
         public IRConversionExpression(IRType type, IRExpression operand)
             : base(type)
         {
-            if (!(type is IRPrimitive primType) || !(operand.Type is IRPrimitive opPrim))
+            if ((!(type is IRPrimitive) && !(type is IRPointer)) || (!(operand.Type is IRPrimitive) && !(operand.Type is IRPointer)))
                 throw new IRTypeException();
 
             Operand  = operand;
@@ -46,10 +46,15 @@ namespace LibDerailer.IR.Expressions
             var mapping = new Dictionary<IRVariable, IRExpression>();
             if (Operand.Unify(template, mapping) && callback(mapping))
             {
-                var newExpr = substitution.CloneComplete();
-                foreach (var varMap in mapping)
-                    newExpr.Substitute(varMap.Key, varMap.Value);
-                Operand = newExpr;
+                if (substitution is IRVariable v)
+                    Operand = mapping[v].CloneComplete();
+                else
+                {
+                    var newExpr = substitution.CloneComplete();
+                    foreach (var varMap in mapping)
+                        newExpr.Substitute(varMap.Key, varMap.Value);
+                    Operand = newExpr;
+                }
             }
         }
 

@@ -16,9 +16,8 @@ namespace LibDerailer.IR.Expressions
             get => _operandA;
             set
             {
-                if (value.Type != Type)
-                    throw new IRTypeException();
                 _operandA = value;
+                CheckTypes();
             }
         }
 
@@ -29,23 +28,35 @@ namespace LibDerailer.IR.Expressions
             get => _operandB;
             set
             {
-                if (value.Type != Type)
-                    throw new IRTypeException();
                 _operandB = value;
+                CheckTypes();
             }
+        }
+
+        private void CheckTypes()
+        {
+            if (OperandA.Type == Type && OperandB.Type == Type)
+                return;
+
+            if (OperandA.Type is IRPointer aPtr && Type == OperandA.Type &&
+                OperandB.Type is IRPrimitive bPrim && bPrim.BitCount == 32)
+                return;
+
+            if (OperandB.Type is IRPointer bPtr && Type == OperandB.Type &&
+                OperandA.Type is IRPrimitive aPrim && aPrim.BitCount == 32)
+                return;
+
+            throw new IRTypeException();
         }
 
         public IRBinaryExpression(IRType type, IRBinaryOperator op, IRExpression operandA, IRExpression operandB)
             : base(type)
         {
-            if (operandA.Type != type)
-                throw new IRTypeException();
-            if (operandB.Type != type)
-                throw new IRTypeException();
-
             Operator = op;
-            OperandA = operandA;
-            OperandB = operandB;
+            _operandA = operandA;
+            _operandB = operandB;
+
+            CheckTypes();
         }
 
         public override IRExpression CloneComplete()
@@ -70,20 +81,30 @@ namespace LibDerailer.IR.Expressions
             var mapping = new Dictionary<IRVariable, IRExpression>();
             if (OperandA.Unify(template, mapping) && callback(mapping))
             {
-                var newExpr = substitution.CloneComplete();
-                foreach (var varMap in mapping)
-                    newExpr.Substitute(varMap.Key, varMap.Value);
-                OperandA = newExpr;
+                if (substitution is IRVariable v)
+                    OperandA = mapping[v].CloneComplete();
+                else
+                {
+                    var newExpr = substitution.CloneComplete();
+                    foreach (var varMap in mapping)
+                        newExpr.Substitute(varMap.Key, varMap.Value);
+                    OperandA = newExpr;
+                }
             }
 
             OperandB.Substitute(template, substitution, callback);
             mapping = new Dictionary<IRVariable, IRExpression>();
             if (OperandB.Unify(template, mapping) && callback(mapping))
             {
-                var newExpr = substitution.CloneComplete();
-                foreach (var varMap in mapping)
-                    newExpr.Substitute(varMap.Key, varMap.Value);
-                OperandB = newExpr;
+                if (substitution is IRVariable v)
+                    OperandB = mapping[v].CloneComplete();
+                else
+                {
+                    var newExpr = substitution.CloneComplete();
+                    foreach (var varMap in mapping)
+                        newExpr.Substitute(varMap.Key, varMap.Value);
+                    OperandB = newExpr;
+                }
             }
         }
 

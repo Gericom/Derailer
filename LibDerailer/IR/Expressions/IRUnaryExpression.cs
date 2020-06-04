@@ -49,10 +49,15 @@ namespace LibDerailer.IR.Expressions
             var mapping = new Dictionary<IRVariable, IRExpression>();
             if (Operand.Unify(template, mapping) && callback(mapping))
             {
-                var newExpr = substitution.CloneComplete();
-                foreach (var varMap in mapping)
-                    newExpr.Substitute(varMap.Key, varMap.Value);
-                Operand = newExpr;
+                if (substitution is IRVariable v)
+                    Operand = mapping[v].CloneComplete();
+                else
+                {
+                    var newExpr = substitution.CloneComplete();
+                    foreach (var varMap in mapping)
+                        newExpr.Substitute(varMap.Key, varMap.Value);
+                    Operand = newExpr;
+                }
             }
         }
 

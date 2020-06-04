@@ -219,7 +219,11 @@ namespace LibDerailer.IR.Expressions
         //     => new IRComparisonExpression(IRComparisonOperator.GreaterEqual, a, b);
 
         public static IRBinaryExpression operator +(IRExpression a, IRExpression b)
-            => new IRBinaryExpression(a.Type, IRBinaryOperator.Add, a, b);
+        {
+            if(b.Type is IRPointer)
+                return new IRBinaryExpression(b.Type, IRBinaryOperator.Add, a, b);
+            return new IRBinaryExpression(a.Type, IRBinaryOperator.Add, a, b);
+        }
 
         public static IRBinaryExpression operator -(IRExpression a, IRExpression b)
             => new IRBinaryExpression(a.Type, IRBinaryOperator.Sub, a, b);

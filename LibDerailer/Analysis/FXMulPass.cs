@@ -19,7 +19,7 @@ namespace LibDerailer.Analysis
                 ((fxMulVarA.Cast(IRPrimitive.S64) * fxMulVarB.Cast(IRPrimitive.S64)).Cast(IRPrimitive.U64) +
                  new IRConversionExpression(IRPrimitive.U64, 0x800u))
                 .ShiftRightLogical(12ul).Cast(IRPrimitive.U32);
-            var fxMulSubst = new IRCallExpression(IRPrimitive.U32, "FX_Mul", fxMulVarA, fxMulVarB);
+            var fxMulSubst = new IRCallExpression(IRPrimitive.S32, "FX_Mul", fxMulVarA, fxMulVarB).Cast(IRPrimitive.U32);
             foreach (var basicBlock in context.Function.BasicBlocks)
                 foreach (var instruction in basicBlock.Instructions)
                     instruction.Substitute(fxMulTemplate, fxMulSubst);

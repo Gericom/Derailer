@@ -20,7 +20,7 @@ using LibDerailer.IR.Types;
 
 namespace LibDerailer.CodeGraph
 {
-    public partial class Disassembler
+    public class Disassembler
     {
         private static void ResolveDefUseRelations(Function func)
         {
@@ -131,6 +131,14 @@ namespace LibDerailer.CodeGraph
             {
                 stackBase -= disResult[1].Details.Operands[2].Immediate;
             }
+            else if (disResult[1].Id == ArmInstructionId.ARM_INS_SUB &&
+                     disResult[1].Details.Operands.Length == 2 &&
+                     disResult[1].Details.Operands[0].Type == ArmOperandType.Register &&
+                     disResult[1].Details.Operands[0].Register.Id == ArmRegisterId.ARM_REG_SP &&
+                     disResult[1].Details.Operands[1].Type == ArmOperandType.Immediate)
+            {
+                stackBase -= disResult[1].Details.Operands[1].Immediate;
+            }
 
             var func = new Function(dataAddress, stackBase);
             func.StackVariables.AddRange(stackVars);
@@ -149,6 +157,21 @@ namespace LibDerailer.CodeGraph
                 {
                     //found last bx lr
                     //check for reg restore and stack adjustment
+
+                    if(mode == ArmDisassembleMode.Thumb)
+                    {
+                        if (i - 1 >= 0)
+                        {
+                            var inst2 = disResult[i - 1];
+                            if (inst2.Id == ArmInstructionId.ARM_INS_POP &&
+                                 inst2.Details.Operands[0].Register.Id == ArmRegisterId.ARM_REG_R3 &&
+                                 inst.Details.Operands[0].Register.Id == ArmRegisterId.ARM_REG_R3)
+                            {
+                                i--;
+                            }
+                        }
+                    }
+
                     if (i - 1 >= 0)
                     {
                         var inst2 = disResult[i - 1];
@@ -164,9 +187,13 @@ namespace LibDerailer.CodeGraph
                     {
                         var inst2 = disResult[i - 1];
                         if (inst2.Id == ArmInstructionId.ARM_INS_ADD &&
+                            ((inst2.Details.Operands.Length == 3 && 
                             inst2.Details.Operands[0].Register.Id == ArmRegisterId.ARM_REG_SP &&
                             inst2.Details.Operands[1].Register.Id == ArmRegisterId.ARM_REG_SP &&
-                            inst2.Details.Operands[2].Type == ArmOperandType.Immediate)
+                            inst2.Details.Operands[2].Type == ArmOperandType.Immediate) ||
+                            (inst2.Details.Operands.Length == 2 &&
+                             inst2.Details.Operands[0].Register.Id == ArmRegisterId.ARM_REG_SP &&
+                             inst2.Details.Operands[1].Type == ArmOperandType.Immediate)))
                         {
                             i--;
                         }
@@ -294,10 +321,7 @@ namespace LibDerailer.CodeGraph
 
                     //Stop at boundary
                     if (boundaries.ContainsKey((uint) disResult[i].Address))
-                    {
-                        var next = boundaries[(uint) disResult[i].Address];
                         break;
-                    }
                 }
             }
 
@@ -456,7 +480,7 @@ namespace LibDerailer.CodeGraph
                             func.MachineRegisterVariables[
                                 ArmUtil.GetRegisterNumber(inst.Details.Operands[0].Register.Id)],
                             IOUtil.ReadU32Le(data, (int) (
-                                inst.Address + inst.Details.Operands[1].Memory.Displacement + 8 - dataAddress))));
+                                inst.Address + inst.Details.Operands[1].Memory.Displacement + (mode == ArmDisassembleMode.Thumb ? 4 : 8) - dataAddress))));
                     }
                     else if (inst.Details.BelongsToGroup(ArmInstructionGroupId.ARM_GRP_CALL))
                     {
@@ -507,8 +531,14 @@ namespace LibDerailer.CodeGraph
                                   inst.Details.Operands[0].Register.Id == ArmRegisterId.ARM_REG_SP &&
                                   inst.Details.WriteBack))
                         {
-                            foreach (var op in inst.Details.Operands)
-                                graphInst.VariableUses.Add(stackVars.First(v => v.Name == "saved_" + op.Register.Name));
+                            if(inst.Details.Operands.Length == 1 && inst.Details.Operands[0].Register.Id == ArmRegisterId.ARM_REG_R3)
+                                graphInst.VariableUses.Add(stackVars.First(v => v.Name == "saved_lr"));
+                            else
+                            {
+                                foreach (var op in inst.Details.Operands)
+                                    graphInst.VariableUses.Add(stackVars.First(v =>
+                                        v.Name == "saved_" + op.Register.Name));
+                            }
                         }
                     }
 
@@ -578,9 +608,18 @@ namespace LibDerailer.CodeGraph
                          (mi.Instruction.Id == ArmInstructionId.ARM_INS_LDM &&
                           mi.Instruction.Details.Operands[0].Register.Id == ArmRegisterId.ARM_REG_SP))
                 {
-                    foreach (var lrUse in mi.VariableDefLocs[mi.VariableDefs.First(
-                        v => v.Location == VariableLocation.Register && v.Address == 14)])
-                        returnBfsQueue.Enqueue(lrUse);
+                    if(mi.Instruction.Details.Operands.Length == 1 && mi.Instruction.Details.Operands[0].Register.Id == ArmRegisterId.ARM_REG_R3)
+                    {
+                        foreach (var lrUse in mi.VariableDefLocs[mi.VariableDefs.First(
+                            v => v.Location == VariableLocation.Register && v.Address == 3)])
+                            returnBfsQueue.Enqueue(lrUse);
+                    }
+                    else
+                    {
+                        foreach (var lrUse in mi.VariableDefLocs[mi.VariableDefs.First(
+                            v => v.Location == VariableLocation.Register && v.Address == 14)])
+                            returnBfsQueue.Enqueue(lrUse);
+                    }
                 }
             }
 
@@ -823,15 +862,20 @@ namespace LibDerailer.CodeGraph
             new MergeS64SubExpressionsPass().Run(irContext);
             new LongShiftFixupPass().Run(irContext);
             new ConstDivisionPass().Run(irContext);
+            new ShiftToCastPass().Run(irContext);
+            new RemoveRedundantCastPass().Run(irContext);
 
             new FXMulPass().Run(irContext);
+
+            new RemoveRedundantCastPass().Run(irContext);
 
             new StructurizeLoopsPass().Run(irContext);
             new CondenseMiniSwitchesPass().Run(irContext);
 
-            new StructurizeIfsPass().Run(irContext);
             new CompoundConditionsPass().Run(irContext);
+            new StructurizeIfsPass().Run(irContext);
             new ForLoopsPass().Run(irContext);
+            new DeadCodeEliminator().Run(irContext);
             new LifetimeAnalyser().Run(irContext);
 
             //debug: output dot
@@ -855,22 +899,20 @@ namespace LibDerailer.CodeGraph
             }
             else
             {
+                int argCount = 0;
                 for (int i = 0; i < 4; i++)
                 {
-                    bool found = false;
                     foreach (var liveIn in irContext.Function.BasicBlocks[0].LiveIns)
                     {
                         if (ReferenceEquals(irContext.VariableMapping[regVars[i]], liveIn))
                         {
-                            method.Parameters.Add((u32, $"rv{i}"));
-                            found = true;
+                            argCount = i + 1;
                             break;
                         }
                     }
-
-                    if (!found)
-                        break;
                 }
+                for(int i = 0; i < argCount; i++)
+                    method.Parameters.Add((u32, $"rv{i}"));
             }
 
             method.Body = BasicBlocksToC(irContext);
@@ -986,6 +1028,7 @@ namespace LibDerailer.CodeGraph
                 else if (curBBlock.IfFollow != null && (!loopBody || head.LatchNode != curBBlock) &&
                          !curBBlock.IsLatchNode)
                 {
+                    cBlock.Statements.AddRange(curBBlock.Instructions.SelectMany(i => i.ToCCode()));
                     if (curBBlock.LoopHead != null && curBBlock.BlockJump.Destination == curBBlock.LoopHead.LoopFollow)
                     {
                         var predicate = curBBlock.BlockJump.Condition.ToCExpression();
@@ -1004,7 +1047,6 @@ namespace LibDerailer.CodeGraph
                     }
                     else
                     {
-                        cBlock.Statements.AddRange(curBBlock.Instructions.SelectMany(i => i.ToCCode()));
                         if (curBBlock.Successors.Contains(curBBlock.IfFollow))
                         {
                             var bodyBlockStart = curBBlock.Successors.First(s => s != curBBlock.BlockJump.Destination);

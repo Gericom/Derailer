@@ -42,12 +42,15 @@ namespace LibDerailer.CodeGraph.Nodes
                     .Append(regVars[13]);
             VariableUses.UnionWith(uses);
 
-            foreach (var op in Instruction.Details.Operands)
+            for (int i = 0; i < Instruction.Details.Operands.Length; i++)
             {
+                var op = Instruction.Details.Operands[i];
                 switch (op.Type)
                 {
                     case ArmOperandType.Register:
-                        if (op.AccessType == OperandAccessType.Write)
+                        if (op.AccessType == OperandAccessType.Write ||
+                            (Instruction.DisassembleMode == ArmDisassembleMode.Thumb &&
+                             op.AccessType == (OperandAccessType.Read | OperandAccessType.Write) && i == 0))
                         {
                             Operands.Add((true, VariableDefs.FirstOrDefault(v =>
                                 v.Location == VariableLocation.Register &&
@@ -187,12 +190,28 @@ namespace LibDerailer.CodeGraph.Nodes
                 case ArmInstructionId.ARM_INS_ADD:
                     if (Instruction.Details.Operands[0].Register.Id == ArmRegisterId.ARM_REG_PC)
                         yield break;
-                    yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
-                        GetIROperand(context, 1) + GetIRSecondOperand(context, 2));
+                    if (Instruction.DisassembleMode == ArmDisassembleMode.Thumb &&
+                        Instruction.Details.Operands.Length == 2)
+                        yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
+                            GetIROperand(context, 0) + GetIRSecondOperand(context, 1));
+                    else if (Instruction.DisassembleMode == ArmDisassembleMode.Thumb &&
+                             Instruction.Details.Operands.Length == 3 &&
+                             Instruction.Details.Operands[2].Type == ArmOperandType.Immediate &&
+                             Instruction.Details.Operands[2].Immediate == 0)
+                        yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
+                            GetIROperand(context, 1));
+                    else
+                        yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
+                            GetIROperand(context, 1) + GetIRSecondOperand(context, 2));
                     break;
                 case ArmInstructionId.ARM_INS_SUB:
-                    yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
-                        GetIROperand(context, 1) - GetIRSecondOperand(context, 2));
+                    if (Instruction.DisassembleMode == ArmDisassembleMode.Thumb &&
+                        Instruction.Details.Operands.Length == 2)
+                        yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
+                            GetIROperand(context, 0) - GetIRSecondOperand(context, 1));
+                    else
+                        yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
+                            GetIROperand(context, 1) - GetIRSecondOperand(context, 2));
                     break;
                 case ArmInstructionId.ARM_INS_RSB:
                     yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
@@ -215,10 +234,33 @@ namespace LibDerailer.CodeGraph.Nodes
                         GetIROperand(context, 1) & ~GetIRSecondOperand(context, 2));
                     break;
                 case ArmInstructionId.ARM_INS_LSL:
+                    if (Instruction.DisassembleMode == ArmDisassembleMode.Arm)
+                        goto case ArmInstructionId.ARM_INS_MOV;
+                    yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
+                        GetIROperand(context, 1).ShiftLeft(GetIRSecondOperand(context, 2)));
+                    break;
                 case ArmInstructionId.ARM_INS_LSR:
+                    if (Instruction.DisassembleMode == ArmDisassembleMode.Arm)
+                        goto case ArmInstructionId.ARM_INS_MOV;
+                    yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
+                        GetIROperand(context, 1).ShiftRightLogical(GetIRSecondOperand(context, 2)));
+                    break;
                 case ArmInstructionId.ARM_INS_ASR:
+                    if (Instruction.DisassembleMode == ArmDisassembleMode.Arm)
+                        goto case ArmInstructionId.ARM_INS_MOV;
+                    yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
+                        GetIROperand(context, 1).ShiftRightArithmetic(GetIRSecondOperand(context, 2)));
+                    break;
                 case ArmInstructionId.ARM_INS_ROR:
+                    if (Instruction.DisassembleMode == ArmDisassembleMode.Arm)
+                        goto case ArmInstructionId.ARM_INS_MOV;
+                    throw new NotImplementedException();
+                    break;
                 case ArmInstructionId.ARM_INS_RRX:
+                    if (Instruction.DisassembleMode == ArmDisassembleMode.Arm)
+                        goto case ArmInstructionId.ARM_INS_MOV;
+                    throw new NotImplementedException();
+                    break;
                 case ArmInstructionId.ARM_INS_MOV:
                     yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
                         GetIRSecondOperand(context, 1));
@@ -243,7 +285,8 @@ namespace LibDerailer.CodeGraph.Nodes
                     yield return new IRAssignment(parentBlock,
                         GetIROperand(context, 1),
                         (GetIROperand(context, 2).Cast(IRPrimitive.S32).Cast(IRPrimitive.S64) *
-                         GetIROperand(context, 3).Cast(IRPrimitive.S32).Cast(IRPrimitive.S64)).ShiftRightLogical(32).Cast(IRPrimitive.U32));
+                         GetIROperand(context, 3).Cast(IRPrimitive.S32).Cast(IRPrimitive.S64)).ShiftRightLogical(32)
+                        .Cast(IRPrimitive.U32));
                     break;
                 case ArmInstructionId.ARM_INS_LDR:
                 case ArmInstructionId.ARM_INS_LDRH:

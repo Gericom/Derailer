@@ -65,6 +65,8 @@
     <Compile Include="Analysis\LifetimeAnalyser.cs" />
     <Compile Include="Analysis\LongShiftFixupPass.cs" />
     <Compile Include="Analysis\MergeS64SubExpressionsPass.cs" />
+    <Compile Include="Analysis\RemoveRedundantCastPass.cs" />
+    <Compile Include="Analysis\ShiftToCastPass.cs" />
     <Compile Include="Analysis\StructurizeIfsPass.cs" />
     <Compile Include="Analysis\StructurizeLoopsPass.cs" />
     <Compile Include="Analysis\CondenseMiniSwitchesPass.cs" />
@@ -141,7 +143,6 @@
     <Compile Include="IR\Expressions\IRRegisterVariable.cs" />
     <Compile Include="IR\Expressions\IRStackVariable.cs" />
     <Compile Include="IR\Expressions\IRVariable.cs" />
-    <Compile Include="IR\FxMul.cs" />
     <Compile Include="IR\Instructions\IRAssignment.cs" />
     <Compile Include="IR\Instructions\IRJump.cs" />
     <Compile Include="IR\Instructions\IRStore.cs" />
