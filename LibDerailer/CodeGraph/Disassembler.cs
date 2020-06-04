@@ -640,7 +640,7 @@ namespace LibDerailer.CodeGraph
                 {
                     var branch = new Branch(
                         block.BlockCondition == ArmConditionCode.Invalid
-                            ? ArmConditionCode.ARM_CC_AL
+                            ? blockEpInsts.Last().Condition
                             : block.BlockCondition,
                         epilogue,
                         blockEpInsts[0].FlagsUseOperand as Variable);
@@ -706,6 +706,77 @@ namespace LibDerailer.CodeGraph
                 }
             }
 
+            //try merging 64 bit math
+            foreach (var block in func.BasicBlocks)
+            {
+                for (int i = 0; i < block.Instructions.Count; i++)
+                {
+                    var inst = block.Instructions[i];
+                    if (!(inst is ArmMachineInstruction armInst))
+                        continue;
+                    if (armInst.Instruction.Id == ArmInstructionId.ARM_INS_ADC)
+                    {
+                        var flagsUseLocs = armInst.VariableUseLocs[(Variable) armInst.FlagsUseOperand];
+                        if (flagsUseLocs.Count != 1 ||
+                            !(flagsUseLocs.First() is ArmMachineInstruction armInst2) ||
+                            armInst2.Instruction.Id != ArmInstructionId.ARM_INS_ADD)
+                            continue;
+                        //CLoHi = ALoHi + BLoHi
+                        var varALo = (Variable) armInst2.Operands[1].op;
+                        varALo.LongPart = VariableLongPart.Lo;
+                        var varAHi = (Variable) armInst.Operands[1].op;
+                        varAHi.LongPart = VariableLongPart.Hi;
+                        var varBLo = armInst2.Operands[2].op;
+                        if (varBLo is Variable)
+                            ((Variable) varBLo).LongPart = VariableLongPart.Lo;
+                        var varBHi = armInst.Operands[2].op;
+                        if (varBHi is Variable)
+                            ((Variable) varBHi).LongPart = VariableLongPart.Hi;
+                        var varCLo = (Variable) armInst2.Operands[0].op;
+                        varCLo.LongPart = VariableLongPart.Lo;
+                        var varCHi = (Variable) armInst.Operands[0].op;
+                        varCHi.LongPart = VariableLongPart.Hi;
+
+                        var longAdd = new LongAdd(varCLo, varCHi, varALo, varAHi, varBLo, varBHi);
+                        longAdd.VariableUseLocs[varALo] = armInst2.VariableUseLocs[varALo];
+                        longAdd.VariableUseLocs[varAHi] = armInst.VariableUseLocs[varAHi];
+                        if (varBLo is Variable)
+                            longAdd.VariableUseLocs[(Variable) varBLo] = armInst2.VariableUseLocs[(Variable) varBLo];
+                        if (varBHi is Variable)
+                            longAdd.VariableUseLocs[(Variable) varBHi] = armInst.VariableUseLocs[(Variable) varBHi];
+                        longAdd.VariableDefLocs[varCLo] = armInst2.VariableDefLocs[varCLo];
+                        longAdd.VariableDefLocs[varCHi] = armInst.VariableDefLocs[varCHi];
+
+                        foreach (var locs in longAdd.VariableUseLocs)
+                        {
+                            foreach (var loc in locs.Value)
+                            {
+                                loc.VariableDefLocs[locs.Key].Remove(armInst2);
+                                loc.VariableDefLocs[locs.Key].Remove(armInst);
+                                loc.VariableDefLocs[locs.Key].Add(longAdd);
+                            }
+                        }
+
+                        foreach (var locs in longAdd.VariableDefLocs)
+                        {
+                            foreach (var loc in locs.Value)
+                            {
+                                loc.VariableUseLocs[locs.Key].Remove(armInst2);
+                                loc.VariableUseLocs[locs.Key].Remove(armInst);
+                                loc.VariableUseLocs[locs.Key].Add(longAdd);
+                            }
+                        }
+
+                        if (!block.Instructions.Contains(armInst2))
+                            throw new Exception();
+
+                        block.Instructions[block.Instructions.IndexOf(armInst2)] = longAdd;
+                        block.Instructions.RemoveAt(i);
+                        i--;
+                    }
+                }
+            }
+
             var irFunc    = new IRFunction();
             var irContext = new IRContext();
             irContext.Function = irFunc;
@@ -748,8 +819,16 @@ namespace LibDerailer.CodeGraph
             new ConstantPropagator().Run(irContext);
             new ExpressionPropagator().Run(irContext);
             new DeadCodeEliminator().Run(irContext);
+
+            new MergeS64SubExpressionsPass().Run(irContext);
+            new LongShiftFixupPass().Run(irContext);
+            new ConstDivisionPass().Run(irContext);
+
+            new FXMulPass().Run(irContext);
+
             new StructurizeLoopsPass().Run(irContext);
             new CondenseMiniSwitchesPass().Run(irContext);
+
             new StructurizeIfsPass().Run(irContext);
             new CompoundConditionsPass().Run(irContext);
             new ForLoopsPass().Run(irContext);

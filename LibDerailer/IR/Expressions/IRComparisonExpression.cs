@@ -62,6 +62,29 @@ namespace LibDerailer.IR.Expressions
                 OperandB.Substitute(variable, expression);
         }
 
+        public override void Substitute(IRExpression template, IRExpression substitution, OnMatchFoundHandler callback)
+        {
+            OperandA.Substitute(template, substitution, callback);
+            var mapping = new Dictionary<IRVariable, IRExpression>();
+            if (OperandA.Unify(template, mapping) && callback(mapping))
+            {
+                var newExpr = substitution.CloneComplete();
+                foreach (var varMap in mapping)
+                    newExpr.Substitute(varMap.Key, varMap.Value);
+                OperandA = newExpr;
+            }
+
+            OperandB.Substitute(template, substitution, callback);
+            mapping = new Dictionary<IRVariable, IRExpression>();
+            if (OperandB.Unify(template, mapping) && callback(mapping))
+            {
+                var newExpr = substitution.CloneComplete();
+                foreach (var varMap in mapping)
+                    newExpr.Substitute(varMap.Key, varMap.Value);
+                OperandB = newExpr;
+            }
+        }
+
         public override HashSet<IRVariable> GetAllVariables()
         {
             var vars = new HashSet<IRVariable>();
@@ -79,32 +102,47 @@ namespace LibDerailer.IR.Expressions
                 case IRComparisonOperator.NotEqual:
                     return OperandA.ToCExpression() != OperandB.ToCExpression();
                 case IRComparisonOperator.Less:
-                    return new CCast(((IRPrimitive)OperandA.Type).ToSigned().ToCType(), OperandA.ToCExpression()) <
-                           new CCast(((IRPrimitive)OperandB.Type).ToSigned().ToCType(), OperandB.ToCExpression());
+                    return new CCast(((IRPrimitive) OperandA.Type).ToSigned().ToCType(), OperandA.ToCExpression()) <
+                           new CCast(((IRPrimitive) OperandB.Type).ToSigned().ToCType(), OperandB.ToCExpression());
                 case IRComparisonOperator.LessEqual:
-                    return new CCast(((IRPrimitive)OperandA.Type).ToSigned().ToCType(), OperandA.ToCExpression()) <=
-                           new CCast(((IRPrimitive)OperandB.Type).ToSigned().ToCType(), OperandB.ToCExpression());
+                    return new CCast(((IRPrimitive) OperandA.Type).ToSigned().ToCType(), OperandA.ToCExpression()) <=
+                           new CCast(((IRPrimitive) OperandB.Type).ToSigned().ToCType(), OperandB.ToCExpression());
                 case IRComparisonOperator.Greater:
-                    return new CCast(((IRPrimitive)OperandA.Type).ToSigned().ToCType(), OperandA.ToCExpression()) >
-                           new CCast(((IRPrimitive)OperandB.Type).ToSigned().ToCType(), OperandB.ToCExpression());
+                    return new CCast(((IRPrimitive) OperandA.Type).ToSigned().ToCType(), OperandA.ToCExpression()) >
+                           new CCast(((IRPrimitive) OperandB.Type).ToSigned().ToCType(), OperandB.ToCExpression());
                 case IRComparisonOperator.GreaterEqual:
-                    return new CCast(((IRPrimitive)OperandA.Type).ToSigned().ToCType(), OperandA.ToCExpression()) <=
-                           new CCast(((IRPrimitive)OperandB.Type).ToSigned().ToCType(), OperandB.ToCExpression());
+                    return new CCast(((IRPrimitive) OperandA.Type).ToSigned().ToCType(), OperandA.ToCExpression()) <=
+                           new CCast(((IRPrimitive) OperandB.Type).ToSigned().ToCType(), OperandB.ToCExpression());
                 case IRComparisonOperator.UnsignedLess:
-                    return new CCast(((IRPrimitive)OperandA.Type).ToUnsigned().ToCType(), OperandA.ToCExpression()) <
-                           new CCast(((IRPrimitive)OperandB.Type).ToUnsigned().ToCType(), OperandB.ToCExpression());
+                    return new CCast(((IRPrimitive) OperandA.Type).ToUnsigned().ToCType(), OperandA.ToCExpression()) <
+                           new CCast(((IRPrimitive) OperandB.Type).ToUnsigned().ToCType(), OperandB.ToCExpression());
                 case IRComparisonOperator.UnsignedLessEqual:
-                    return new CCast(((IRPrimitive)OperandA.Type).ToUnsigned().ToCType(), OperandA.ToCExpression()) <=
-                           new CCast(((IRPrimitive)OperandB.Type).ToUnsigned().ToCType(), OperandB.ToCExpression());
+                    return new CCast(((IRPrimitive) OperandA.Type).ToUnsigned().ToCType(), OperandA.ToCExpression()) <=
+                           new CCast(((IRPrimitive) OperandB.Type).ToUnsigned().ToCType(), OperandB.ToCExpression());
                 case IRComparisonOperator.UnsignedGreater:
-                    return new CCast(((IRPrimitive)OperandA.Type).ToUnsigned().ToCType(), OperandA.ToCExpression()) >
-                           new CCast(((IRPrimitive)OperandB.Type).ToUnsigned().ToCType(), OperandB.ToCExpression());
+                    return new CCast(((IRPrimitive) OperandA.Type).ToUnsigned().ToCType(), OperandA.ToCExpression()) >
+                           new CCast(((IRPrimitive) OperandB.Type).ToUnsigned().ToCType(), OperandB.ToCExpression());
                 case IRComparisonOperator.UnsignedGreaterEqual:
-                    return new CCast(((IRPrimitive)OperandA.Type).ToUnsigned().ToCType(), OperandA.ToCExpression()) >=
-                           new CCast(((IRPrimitive)OperandB.Type).ToUnsigned().ToCType(), OperandB.ToCExpression());
+                    return new CCast(((IRPrimitive) OperandA.Type).ToUnsigned().ToCType(), OperandA.ToCExpression()) >=
+                           new CCast(((IRPrimitive) OperandB.Type).ToUnsigned().ToCType(), OperandB.ToCExpression());
                 default:
                     throw new ArgumentOutOfRangeException();
             }
+        }
+
+        public override bool Unify(IRExpression template, Dictionary<IRVariable, IRExpression> varMapping)
+        {
+            if (template is IRVariable templateVar && templateVar.Type == Type)
+            {
+                if (varMapping.ContainsKey(templateVar))
+                    return varMapping[templateVar].Equals(this);
+                varMapping[templateVar] = this;
+                return true;
+            }
+
+            if (!(template is IRComparisonExpression exp) || exp.Operator != Operator || !exp.Type.Equals(Type))
+                return false;
+            return OperandA.Unify(exp.OperandA, varMapping) && OperandB.Unify(exp.OperandB, varMapping);
         }
 
         public override bool Equals(object obj)

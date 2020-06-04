@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using LibDerailer.CCodeGen.Statements.Expressions;
 using LibDerailer.IR.Types;
 
@@ -6,7 +7,7 @@ namespace LibDerailer.IR.Expressions
 {
     public abstract class IRConstant : IRExpression
     {
-        protected IRConstant(IRType type) 
+        protected IRConstant(IRType type)
             : base(type)
         {
         }
@@ -49,11 +50,34 @@ namespace LibDerailer.IR.Expressions
             Value = value;
         }
 
-        public override IRExpression CloneComplete() 
+        public override IRExpression CloneComplete()
             => new IRConstant<T>(Value);
 
         public override CExpression ToCExpression()
             => new CRawLiteral<T>(Value);
+
+        public override void Substitute(IRExpression template, IRExpression substitution, OnMatchFoundHandler callback)
+        {
+            
+        }
+
+        public override void Substitute(IRVariable variable, IRExpression expression)
+        {
+            
+        }
+
+        public override bool Unify(IRExpression template, Dictionary<IRVariable, IRExpression> varMapping)
+        {
+            if(template is IRVariable templateVar && templateVar.Type == Type)
+            {
+                if (varMapping.ContainsKey(templateVar))
+                    return varMapping[templateVar].Equals(this);
+                varMapping[templateVar] = this;
+                return true;
+            }
+
+            return Equals(template);
+        }
 
         public override bool Equals(object obj)
             => obj is IRConstant<T> exp &&

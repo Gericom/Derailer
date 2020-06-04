@@ -30,11 +30,39 @@ namespace LibDerailer.IR.Expressions
                 Pointer.Substitute(variable, expression);
         }
 
+        public override void Substitute(IRExpression template, IRExpression substitution, OnMatchFoundHandler callback)
+        {
+            Pointer.Substitute(template, substitution, callback);
+            var mapping = new Dictionary<IRVariable, IRExpression>();
+            if (Pointer.Unify(template, mapping) && callback(mapping))
+            {
+                var newExpr = substitution.CloneComplete();
+                foreach (var varMap in mapping)
+                    newExpr.Substitute(varMap.Key, varMap.Value);
+                Pointer = newExpr;
+            }
+        }
+
         public override IRExpression CloneComplete()
             => new IRDerefExpression(Type, Pointer.CloneComplete());
 
         public override CExpression ToCExpression()
             => CExpression.Deref(new CCast(new CType(Type.ToCType(), true), Pointer.ToCExpression()));
+
+        public override bool Unify(IRExpression template, Dictionary<IRVariable, IRExpression> varMapping)
+        {
+            if (template is IRVariable templateVar && templateVar.Type == Type)
+            {
+                if (varMapping.ContainsKey(templateVar))
+                    return varMapping[templateVar].Equals(this);
+                varMapping[templateVar] = this;
+                return true;
+            }
+
+            if (!(template is IRDerefExpression exp) || !exp.Type.Equals(Type))
+                return false;
+            return Pointer.Unify(exp.Pointer, varMapping);
+        }
 
         public override bool Equals(object obj)
             => obj is IRDerefExpression exp &&

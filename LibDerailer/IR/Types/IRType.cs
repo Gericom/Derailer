@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using LibDerailer.CCodeGen;
+using LibDerailer.IO.Elf.Dwarf2;
 
 namespace LibDerailer.IR.Types
 {
@@ -22,5 +23,20 @@ namespace LibDerailer.IR.Types
         {
             return !a.Equals(b);
         }
+
+        // public static IRType FromDwarf(Dwarf2Die die)
+        // {
+        //     if (!(die is Dwarf2ClassType) &&
+        //         !(die is Dwarf2Typedef) &&
+        //         !(die is Dwarf2StructureType) &&
+        //         !(die is Dwarf2UnionType) &&
+        //         !(die is Dwarf2BaseType))
+        //         return null;
+        //
+        //     while (die is Dwarf2Typedef tdef)
+        //         die = tdef.Type;
+        //
+        //     return null;
+        // }
     }
 }

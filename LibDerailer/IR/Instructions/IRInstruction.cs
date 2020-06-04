@@ -26,7 +26,14 @@ namespace LibDerailer.IR.Instructions
             => Enumerable.Empty<CStatement>();
 
         public abstract void SubstituteUse(IRVariable variable, IRExpression expression);
-
         public abstract void SubstituteDef(IRVariable variable, IRExpression expression);
+
+
+        public void Substitute(IRExpression template, IRExpression substitution)
+        {
+            Substitute(template, substitution, _ => true);
+        }
+
+        public abstract void Substitute(IRExpression template, IRExpression substitution, IRExpression.OnMatchFoundHandler callback);
     }
 }

@@ -32,7 +32,7 @@ namespace LibDerailer.Analysis
                     //     ifBlock = elseBlock;
                     //     elseBlock = tmp;
                     // }
-                    if (elseBlock.Successors.Count == 0)
+                    if (elseBlock.Successors.Count == 0 && elseBlock != context.Function.Epilogue)
                         continue;
 
                     //change = true;

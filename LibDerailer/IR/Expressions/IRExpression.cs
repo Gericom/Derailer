@@ -8,6 +8,8 @@ namespace LibDerailer.IR.Expressions
 {
     public abstract class IRExpression
     {
+        public delegate bool OnMatchFoundHandler(Dictionary<IRVariable, IRExpression> varMapping);
+
         public IRType Type { get; }
 
         public IRExpression(IRType type)
@@ -15,11 +17,18 @@ namespace LibDerailer.IR.Expressions
             Type = type;
         }
 
-        public virtual void Substitute(IRVariable variable, IRExpression expression)
-        {
-        }
+        public abstract void Substitute(IRVariable variable, IRExpression expression);
 
         public abstract IRExpression CloneComplete();
+
+        public abstract bool Unify(IRExpression template, Dictionary<IRVariable, IRExpression> varMapping);
+
+        public void Substitute(IRExpression template, IRExpression substitution)
+        {
+            Substitute(template, substitution, _ => true);
+        }
+
+        public abstract void Substitute(IRExpression template, IRExpression substitution, OnMatchFoundHandler callback);
 
         public virtual HashSet<IRVariable> GetAllVariables()
             => new HashSet<IRVariable>();

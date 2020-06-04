@@ -64,6 +64,29 @@ namespace LibDerailer.IR.Expressions
                 OperandB.Substitute(variable, expression);
         }
 
+        public override void Substitute(IRExpression template, IRExpression substitution, OnMatchFoundHandler callback)
+        {
+            OperandA.Substitute(template, substitution, callback);
+            var mapping = new Dictionary<IRVariable, IRExpression>();
+            if (OperandA.Unify(template, mapping) && callback(mapping))
+            {
+                var newExpr = substitution.CloneComplete();
+                foreach (var varMap in mapping)
+                    newExpr.Substitute(varMap.Key, varMap.Value);
+                OperandA = newExpr;
+            }
+
+            OperandB.Substitute(template, substitution, callback);
+            mapping = new Dictionary<IRVariable, IRExpression>();
+            if (OperandB.Unify(template, mapping) && callback(mapping))
+            {
+                var newExpr = substitution.CloneComplete();
+                foreach (var varMap in mapping)
+                    newExpr.Substitute(varMap.Key, varMap.Value);
+                OperandB = newExpr;
+            }
+        }
+
         public override HashSet<IRVariable> GetAllVariables()
         {
             var vars = new HashSet<IRVariable>();
@@ -93,10 +116,11 @@ namespace LibDerailer.IR.Expressions
                 case IRBinaryOperator.Lsl:
                     return OperandA.ToCExpression().ShiftLeft(OperandB.ToCExpression());
                 case IRBinaryOperator.Lsr:
-                    return OperandA.ToCExpression().ShiftRight(OperandB.ToCExpression());
+                    return new CCast(((IRPrimitive) OperandA.Type).ToUnsigned().ToCType(), OperandA.ToCExpression())
+                        .ShiftRight(OperandB.ToCExpression());
                 case IRBinaryOperator.Asr:
-                    return new CCast(((IRPrimitive)OperandA.Type).ToSigned().ToCType(), OperandA.ToCExpression()).ShiftRight(
-                        OperandB.ToCExpression());
+                    return new CCast(((IRPrimitive) OperandA.Type).ToSigned().ToCType(), OperandA.ToCExpression())
+                        .ShiftRight(OperandB.ToCExpression());
                 case IRBinaryOperator.Mul:
                     return OperandA.ToCExpression() * OperandB.ToCExpression();
                 case IRBinaryOperator.Div:
@@ -108,11 +132,26 @@ namespace LibDerailer.IR.Expressions
             }
         }
 
+        public override bool Unify(IRExpression template, Dictionary<IRVariable, IRExpression> varMapping)
+        {
+            if (template is IRVariable templateVar && templateVar.Type == Type)
+            {
+                if (varMapping.ContainsKey(templateVar))
+                    return varMapping[templateVar].Equals(this);
+                varMapping[templateVar] = this;
+                return true;
+            }
+
+            if (!(template is IRBinaryExpression exp) || exp.Operator != Operator || !exp.Type.Equals(Type))
+                return false;
+            return OperandA.Unify(exp.OperandA, varMapping) && OperandB.Unify(exp.OperandB, varMapping);
+        }
+
         public override bool Equals(object obj)
-            => obj is IRBinaryExpression exp && 
-               exp.Operator == Operator && 
+            => obj is IRBinaryExpression exp &&
+               exp.Operator == Operator &&
                exp.Type == Type &&
-               exp.OperandA.Equals(OperandA) && 
+               exp.OperandA.Equals(OperandA) &&
                exp.OperandB.Equals(OperandB);
     }
 }

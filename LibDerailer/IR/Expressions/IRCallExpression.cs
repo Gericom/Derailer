@@ -35,6 +35,22 @@ namespace LibDerailer.IR.Expressions
             }
         }
 
+        public override void Substitute(IRExpression template, IRExpression substitution, OnMatchFoundHandler callback)
+        {
+            for(int i = 0; i < Arguments.Count; i++)
+            {
+                Arguments[i].Substitute(template, substitution, callback);
+                var mapping = new Dictionary<IRVariable, IRExpression>();
+                if (Arguments[i].Unify(template, mapping) && callback(mapping))
+                {
+                    var newExpr = substitution.CloneComplete();
+                    foreach (var varMap in mapping)
+                        newExpr.Substitute(varMap.Key, varMap.Value);
+                    Arguments[i] = newExpr;
+                }
+            }
+        }
+
         public override HashSet<IRVariable> GetAllVariables()
         {
             var vars = new HashSet<IRVariable>();
@@ -45,6 +61,25 @@ namespace LibDerailer.IR.Expressions
 
         public override CExpression ToCExpression()
             => new CMethodCall(false, TargetName, Arguments.Select(a => a.ToCExpression()).ToArray());
+
+        public override bool Unify(IRExpression template, Dictionary<IRVariable, IRExpression> varMapping)
+        {
+            if (template is IRVariable templateVar && templateVar.Type == Type)
+            {
+                if (varMapping.ContainsKey(templateVar))
+                    return varMapping[templateVar].Equals(this);
+                varMapping[templateVar] = this;
+                return true;
+            }
+
+            if (!(template is IRCallExpression exp) || exp.TargetName != TargetName || 
+                !exp.Type.Equals(Type) || exp.Arguments.Count != Arguments.Count)
+                return false;
+            for(int i = 0; i < Arguments.Count; i++)
+                if (!Arguments[i].Unify(exp.Arguments[i], varMapping))
+                    return false;
+            return true;
+        }
 
         public override bool Equals(object obj)
             => obj is IRCallExpression exp &&

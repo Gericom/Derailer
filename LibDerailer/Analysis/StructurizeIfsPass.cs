@@ -16,7 +16,7 @@ namespace LibDerailer.Analysis
             foreach (var block in context.Function.BasicBlocks.AsEnumerable().Reverse())
             {
                 //and not some loop thingie
-                if (block.Successors.Count != 2 || block.BlockJump.IsLoopJump)
+                if (block.Successors.Count != 2 || block.BlockJump.IsLoopJump || block.SwitchFollow != null)
                     continue;
                 IRBasicBlock follow          = null;
                 int          followInEdges   = 0;

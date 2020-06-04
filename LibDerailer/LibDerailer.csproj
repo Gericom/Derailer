@@ -57,10 +57,14 @@
     <Compile Include="Analysis\AnalysisPass.cs" />
     <Compile Include="Analysis\CompoundConditionsPass.cs" />
     <Compile Include="Analysis\ConstantPropagator.cs" />
+    <Compile Include="Analysis\ConstDivisionPass.cs" />
     <Compile Include="Analysis\DeadCodeEliminator.cs" />
     <Compile Include="Analysis\ExpressionPropagator.cs" />
     <Compile Include="Analysis\ForLoopsPass.cs" />
+    <Compile Include="Analysis\FXMulPass.cs" />
     <Compile Include="Analysis\LifetimeAnalyser.cs" />
+    <Compile Include="Analysis\LongShiftFixupPass.cs" />
+    <Compile Include="Analysis\MergeS64SubExpressionsPass.cs" />
     <Compile Include="Analysis\StructurizeIfsPass.cs" />
     <Compile Include="Analysis\StructurizeLoopsPass.cs" />
     <Compile Include="Analysis\CondenseMiniSwitchesPass.cs" />
@@ -91,6 +95,8 @@
     <Compile Include="CodeGraph\Interval.cs" />
     <Compile Include="CodeGraph\IntervalNode.cs" />
     <Compile Include="CodeGraph\Nodes\FunctionExit.cs" />
+    <Compile Include="CodeGraph\Nodes\LongAdd.cs" />
+    <Compile Include="CodeGraph\VariableLongPart.cs" />
     <Compile Include="Compiler\Compiler.cs" />
     <Compile Include="IO\Elf\Dwarf2\Dwarf2.cs" />
     <Compile Include="IO\Elf\Dwarf2\Dwarf2Inheritance.cs" />
@@ -147,7 +153,6 @@
     <Compile Include="IR\Expressions\IRComparisonOperator.cs" />
     <Compile Include="IR\Expressions\IRConstant.cs" />
     <Compile Include="IR\Expressions\IRConversionExpression.cs" />
-    <Compile Include="IR\Expressions\IRConversionOperator.cs" />
     <Compile Include="IR\Expressions\IRExpression.cs" />
     <Compile Include="IR\Instructions\IRInstruction.cs" />
     <Compile Include="IR\Expressions\IRTypeException.cs" />

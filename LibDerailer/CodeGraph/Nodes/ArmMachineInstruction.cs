@@ -235,9 +235,16 @@ namespace LibDerailer.CodeGraph.Nodes
                     yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
                         GetIROperand(context, 1) * GetIROperand(context, 2) + GetIROperand(context, 3));
                     break;
-                // case ArmInstructionId.ARM_INS_SMULL:
-                //     yield return new IRAssignment(GetIROperand(0), GetIROperand(1).Sext(IRType.I64) * GetIROperand(2).Sext(IRType.I64));
-                //     break;
+                case ArmInstructionId.ARM_INS_SMULL:
+                    yield return new IRAssignment(parentBlock,
+                        GetIROperand(context, 0),
+                        (GetIROperand(context, 2).Cast(IRPrimitive.S32).Cast(IRPrimitive.S64) *
+                         GetIROperand(context, 3).Cast(IRPrimitive.S32).Cast(IRPrimitive.S64)).Cast(IRPrimitive.U32));
+                    yield return new IRAssignment(parentBlock,
+                        GetIROperand(context, 1),
+                        (GetIROperand(context, 2).Cast(IRPrimitive.S32).Cast(IRPrimitive.S64) *
+                         GetIROperand(context, 3).Cast(IRPrimitive.S32).Cast(IRPrimitive.S64)).ShiftRightLogical(32).Cast(IRPrimitive.U32));
+                    break;
                 case ArmInstructionId.ARM_INS_LDR:
                 case ArmInstructionId.ARM_INS_LDRH:
                 case ArmInstructionId.ARM_INS_LDRSH:
@@ -285,8 +292,9 @@ namespace LibDerailer.CodeGraph.Nodes
                     else if (Instruction.Details.Operands[1].Memory.Index == null)
                     {
                         var deref = new IRDerefExpression(type,
-                            GetIROperand(context, 1) + (uint)Instruction.Details.Operands[1].Memory.Displacement);
-                        yield return new IRAssignment(parentBlock, GetIROperand(context, 0), deref.Cast(IRPrimitive.U32));
+                            GetIROperand(context, 1) + (uint) Instruction.Details.Operands[1].Memory.Displacement);
+                        yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
+                            deref.Cast(IRPrimitive.U32));
                         break;
                     }
                     else
@@ -297,7 +305,8 @@ namespace LibDerailer.CodeGraph.Nodes
                         {
                             var deref = new IRDerefExpression(type,
                                 GetIROperand(context, 1) + GetIROperand(context, 2));
-                            yield return new IRAssignment(parentBlock, GetIROperand(context, 0), deref.Cast(IRPrimitive.U32));
+                            yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
+                                deref.Cast(IRPrimitive.U32));
                             break;
                         }
                         else
@@ -344,7 +353,7 @@ namespace LibDerailer.CodeGraph.Nodes
                     else if (Instruction.Details.Operands[1].Memory.Index == null)
                     {
                         yield return new IRStore(parentBlock, type,
-                            GetIROperand(context, 1) + (uint)Instruction.Details.Operands[1].Memory.Displacement,
+                            GetIROperand(context, 1) + (uint) Instruction.Details.Operands[1].Memory.Displacement,
                             GetIROperand(context, 0));
                         break;
                     }

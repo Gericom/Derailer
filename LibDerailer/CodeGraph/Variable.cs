@@ -14,6 +14,8 @@ namespace LibDerailer.CodeGraph
 
         public VariableLocation Location { get; }
 
+        public VariableLongPart LongPart { get; set; }
+
         //regnum for register var
         //stack offset for stack var
         //memory address for memory var

@@ -40,11 +40,39 @@ namespace LibDerailer.IR.Expressions
                 Operand.Substitute(variable, expression);
         }
 
+        public override void Substitute(IRExpression template, IRExpression substitution, OnMatchFoundHandler callback)
+        {
+            Operand.Substitute(template, substitution, callback);
+            var mapping = new Dictionary<IRVariable, IRExpression>();
+            if (Operand.Unify(template, mapping) && callback(mapping))
+            {
+                var newExpr = substitution.CloneComplete();
+                foreach (var varMap in mapping)
+                    newExpr.Substitute(varMap.Key, varMap.Value);
+                Operand = newExpr;
+            }
+        }
+
         public override HashSet<IRVariable> GetAllVariables()
             => Operand.GetAllVariables();
 
         public override CExpression ToCExpression()
             => new CCast(Type.ToCType(), Operand.ToCExpression());
+
+        public override bool Unify(IRExpression template, Dictionary<IRVariable, IRExpression> varMapping)
+        {
+            if (template is IRVariable templateVar && templateVar.Type == Type)
+            {
+                if (varMapping.ContainsKey(templateVar))
+                    return varMapping[templateVar].Equals(this);
+                varMapping[templateVar] = this;
+                return true;
+            }
+
+            if (!(template is IRConversionExpression exp) || !exp.Type.Equals(Type))
+                return false;
+            return Operand.Unify(exp.Operand, varMapping);
+        }
 
         public override bool Equals(object obj)
             => obj is IRConversionExpression exp &&

@@ -99,6 +99,16 @@ namespace LibDerailerTest
         [TestMethod]
         public void FxMulTest()
         {
+            var code = new uint[]
+            {
+                0xE0C12190, 0xE3A00B02, 0xE0920000, 0xE2A11000, 0xE1A00620, 0xE1800A01, 0xE12FFF1E
+            };
+            var func = Disassembler.DisassembleArm(InstructionWordsToBytes(code), 0, ArmDisassembleMode.Arm);
+        }
+
+        [TestMethod]
+        public void DoubleFxMulTest()
+        {
             var code = new[]
             {
                 0xE0C13190, 0xE3A00B02, 0xE0933000, 0xE2A11000, 0xE1A03623, 0xE1833A01, 0xE0C12293, 0xE0920000,
@@ -114,6 +124,47 @@ namespace LibDerailerTest
             {
                 0xE59F3028, 0xE1A01FA0, 0xE0CC2093, 0xE080C00C, 0xE1A0C2CC, 0xE081C00C, 0xE59F3014, 0xE1A01FAC,
                 0xE0C02C93, 0xE1A000C0, 0xE0810000, 0xE12FFF1E, 0xEA0EA0EB, 0x66666667u
+            };
+            var func = Disassembler.DisassembleArm(InstructionWordsToBytes(code), 0, ArmDisassembleMode.Arm);
+        }
+
+        [TestMethod]
+        public void SDiv2Test()
+        {
+            var code = new uint[]
+            {
+                0xE0800FA0, 0xE1A000C0, 0xE12FFF1E
+            };
+            var func = Disassembler.DisassembleArm(InstructionWordsToBytes(code), 0, ArmDisassembleMode.Arm);
+        }
+
+        [TestMethod]
+        public void SDiv3Test()
+        {
+            var code = new uint[]
+            {
+                0xE59F200C, 0xE0C31092, 0xE0833FA0, 0xE1A00003, 0xE12FFF1E, 0x55555556
+            };
+            var func = Disassembler.DisassembleArm(InstructionWordsToBytes(code), 0, ArmDisassembleMode.Arm);
+        }
+
+        [TestMethod]
+        public void SDiv5Test()
+        {
+            var code = new uint[]
+            {
+                0xE59F3010, 0xE1A01FA0, 0xE0C02093, 0xE1A000C0, 0xE0810000, 0xE12FFF1E, 0x66666667
+            };
+            var func = Disassembler.DisassembleArm(InstructionWordsToBytes(code), 0, ArmDisassembleMode.Arm);
+        }
+
+        [TestMethod]
+        public void SDiv35Test()
+        {
+            var code = new uint[]
+            {
+                0xE59F3018, 0xE1A01FA0, 0xE0CC2093, 0xE080C00C, 0xE1A0C2CC, 0xE081C00C, 0xE1A0000C, 0xE12FFF1E,
+                0xEA0EA0EB
             };
             var func = Disassembler.DisassembleArm(InstructionWordsToBytes(code), 0, ArmDisassembleMode.Arm);
         }
@@ -394,6 +445,7 @@ namespace LibDerailerTest
             };
             var func = Disassembler.DisassembleArm(InstructionWordsToBytes(code), 0, ArmDisassembleMode.Arm);
         }
+
         [TestMethod]
         public void MiniSwitchTest3()
         {
@@ -431,6 +483,7 @@ namespace LibDerailerTest
             };
             var func = Disassembler.DisassembleArm(InstructionWordsToBytes(code), 0, ArmDisassembleMode.Arm);
         }
+
         [TestMethod]
         public void UnstructuredLoopSwitchTest()
         {
@@ -468,6 +521,7 @@ namespace LibDerailerTest
             };
             var func = Disassembler.DisassembleArm(InstructionWordsToBytes(code), 0, ArmDisassembleMode.Arm);
         }
+
         [TestMethod]
         public void SwitchBinarySearchTest()
         {
@@ -508,6 +562,16 @@ namespace LibDerailerTest
                 0xE12FFF1E  // bx lr
             };
 
+            var func = Disassembler.DisassembleArm(InstructionWordsToBytes(code), 0, ArmDisassembleMode.Arm);
+        }
+
+        [TestMethod]
+        public void Add6464Test()
+        {
+            var code = new uint[]
+            {
+                0xE0900002, 0xE0A11003, 0xE12FFF1E
+            };
             var func = Disassembler.DisassembleArm(InstructionWordsToBytes(code), 0, ArmDisassembleMode.Arm);
         }
 

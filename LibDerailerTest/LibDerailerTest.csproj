@@ -57,6 +57,7 @@
     <Compile Include="IORegTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TypeInfoTests.cs" />
+    <Compile Include="UnificationTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

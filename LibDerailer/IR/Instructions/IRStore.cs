@@ -59,5 +59,18 @@ namespace LibDerailer.IR.Instructions
         {
             
         }
+
+        public override void Substitute(IRExpression template, IRExpression substitution, IRExpression.OnMatchFoundHandler callback)
+        {
+            Operand.Substitute(template, substitution, callback);
+            var mapping = new Dictionary<IRVariable, IRExpression>();
+            if (Operand.Unify(template, mapping) && callback(mapping))
+            {
+                var newExpr = substitution.CloneComplete();
+                foreach (var varMap in mapping)
+                    newExpr.Substitute(varMap.Key, varMap.Value);
+                Operand = newExpr;
+            }
+        }
     }
 }
