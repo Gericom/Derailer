@@ -13,6 +13,7 @@ using LibDerailer.CCodeGen.Statements.Expressions;
 using LibDerailer.CodeGraph;
 using LibDerailer.CodeGraph.Nodes;
 using LibDerailer.IO;
+using LibDerailer.IO.Elf.Dwarf2;
 using LibDerailer.IR;
 using LibDerailer.IR.Expressions;
 using LibDerailer.IR.Instructions;
@@ -20,7 +21,7 @@ using LibDerailer.IR.Types;
 
 namespace LibDerailer.CodeGraph
 {
-    public class Disassembler
+    public class Decompiler
     {
         private static void ResolveDefUseRelations(Function func)
         {
@@ -158,14 +159,14 @@ namespace LibDerailer.CodeGraph
                     //found last bx lr
                     //check for reg restore and stack adjustment
 
-                    if(mode == ArmDisassembleMode.Thumb)
+                    if (mode == ArmDisassembleMode.Thumb)
                     {
                         if (i - 1 >= 0)
                         {
                             var inst2 = disResult[i - 1];
                             if (inst2.Id == ArmInstructionId.ARM_INS_POP &&
-                                 inst2.Details.Operands[0].Register.Id == ArmRegisterId.ARM_REG_R3 &&
-                                 inst.Details.Operands[0].Register.Id == ArmRegisterId.ARM_REG_R3)
+                                inst2.Details.Operands[0].Register.Id == ArmRegisterId.ARM_REG_R3 &&
+                                inst.Details.Operands[0].Register.Id == ArmRegisterId.ARM_REG_R3)
                             {
                                 i--;
                             }
@@ -187,13 +188,13 @@ namespace LibDerailer.CodeGraph
                     {
                         var inst2 = disResult[i - 1];
                         if (inst2.Id == ArmInstructionId.ARM_INS_ADD &&
-                            ((inst2.Details.Operands.Length == 3 && 
-                            inst2.Details.Operands[0].Register.Id == ArmRegisterId.ARM_REG_SP &&
-                            inst2.Details.Operands[1].Register.Id == ArmRegisterId.ARM_REG_SP &&
-                            inst2.Details.Operands[2].Type == ArmOperandType.Immediate) ||
-                            (inst2.Details.Operands.Length == 2 &&
-                             inst2.Details.Operands[0].Register.Id == ArmRegisterId.ARM_REG_SP &&
-                             inst2.Details.Operands[1].Type == ArmOperandType.Immediate)))
+                            ((inst2.Details.Operands.Length == 3 &&
+                              inst2.Details.Operands[0].Register.Id == ArmRegisterId.ARM_REG_SP &&
+                              inst2.Details.Operands[1].Register.Id == ArmRegisterId.ARM_REG_SP &&
+                              inst2.Details.Operands[2].Type == ArmOperandType.Immediate) ||
+                             (inst2.Details.Operands.Length == 2 &&
+                              inst2.Details.Operands[0].Register.Id == ArmRegisterId.ARM_REG_SP &&
+                              inst2.Details.Operands[1].Type == ArmOperandType.Immediate)))
                         {
                             i--;
                         }
@@ -480,7 +481,8 @@ namespace LibDerailer.CodeGraph
                             func.MachineRegisterVariables[
                                 ArmUtil.GetRegisterNumber(inst.Details.Operands[0].Register.Id)],
                             IOUtil.ReadU32Le(data, (int) (
-                                inst.Address + inst.Details.Operands[1].Memory.Displacement + (mode == ArmDisassembleMode.Thumb ? 4 : 8) - dataAddress))));
+                                inst.Address + inst.Details.Operands[1].Memory.Displacement +
+                                (mode == ArmDisassembleMode.Thumb ? 4 : 8) - dataAddress))));
                     }
                     else if (inst.Details.BelongsToGroup(ArmInstructionGroupId.ARM_GRP_CALL))
                     {
@@ -531,7 +533,8 @@ namespace LibDerailer.CodeGraph
                                   inst.Details.Operands[0].Register.Id == ArmRegisterId.ARM_REG_SP &&
                                   inst.Details.WriteBack))
                         {
-                            if(inst.Details.Operands.Length == 1 && inst.Details.Operands[0].Register.Id == ArmRegisterId.ARM_REG_R3)
+                            if (inst.Details.Operands.Length == 1 &&
+                                inst.Details.Operands[0].Register.Id == ArmRegisterId.ARM_REG_R3)
                                 graphInst.VariableUses.Add(stackVars.First(v => v.Name == "saved_lr"));
                             else
                             {
@@ -608,7 +611,8 @@ namespace LibDerailer.CodeGraph
                          (mi.Instruction.Id == ArmInstructionId.ARM_INS_LDM &&
                           mi.Instruction.Details.Operands[0].Register.Id == ArmRegisterId.ARM_REG_SP))
                 {
-                    if(mi.Instruction.Details.Operands.Length == 1 && mi.Instruction.Details.Operands[0].Register.Id == ArmRegisterId.ARM_REG_R3)
+                    if (mi.Instruction.Details.Operands.Length == 1 &&
+                        mi.Instruction.Details.Operands[0].Register.Id == ArmRegisterId.ARM_REG_R3)
                     {
                         foreach (var lrUse in mi.VariableDefLocs[mi.VariableDefs.First(
                             v => v.Location == VariableLocation.Register && v.Address == 3)])
@@ -869,6 +873,10 @@ namespace LibDerailer.CodeGraph
 
             new RemoveRedundantCastPass().Run(irContext);
 
+            // new StructFieldPass().Run(irContext);
+            //
+            // new RemoveRedundantCastPass().Run(irContext);
+
             new StructurizeLoopsPass().Run(irContext);
             new CondenseMiniSwitchesPass().Run(irContext);
 
@@ -878,6 +886,11 @@ namespace LibDerailer.CodeGraph
             new DeadCodeEliminator().Run(irContext);
             new LifetimeAnalyser().Run(irContext);
 
+            //cleanup all vars without uses and defs
+            var vars = irContext.VariableMapping.Values.Where(v =>
+                irContext.Function.BasicBlocks[0].FindUses(0, v).Length != 0 ||
+                irContext.Function.Epilogue.FindDefs(0, v).Length != 0).ToList();
+
             //debug: output dot
             File.WriteAllText(@"basicblocks.txt", func.BasicBlockGraphToDot());
             File.WriteAllText(@"defuse.txt", func.DefUseGraphToDot());
@@ -885,16 +898,26 @@ namespace LibDerailer.CodeGraph
             var method = new CMethod(hasReturnValue ? u32 : new CType(), "func");
             if (func.StackVariables.Any(v => v.Address >= 0))
             {
-                method.Parameters.Add((u32, "rv0"));
-                method.Parameters.Add((u32, "rv1"));
-                method.Parameters.Add((u32, "rv2"));
-                method.Parameters.Add((u32, "rv3"));
+                method.Parameters.Add((irContext.VariableMapping[regVars[0]].Type.ToCType(),
+                    irContext.VariableMapping[regVars[0]].Name));
+                method.Parameters.Add((irContext.VariableMapping[regVars[1]].Type.ToCType(),
+                    irContext.VariableMapping[regVars[1]].Name));
+                method.Parameters.Add((irContext.VariableMapping[regVars[2]].Type.ToCType(),
+                    irContext.VariableMapping[regVars[2]].Name));
+                method.Parameters.Add((irContext.VariableMapping[regVars[3]].Type.ToCType(),
+                    irContext.VariableMapping[regVars[3]].Name));
+
+                vars.Remove(irContext.VariableMapping[regVars[0]]);
+                vars.Remove(irContext.VariableMapping[regVars[1]]);
+                vars.Remove(irContext.VariableMapping[regVars[2]]);
+                vars.Remove(irContext.VariableMapping[regVars[3]]);
 
                 foreach (var stackVar in func.StackVariables)
                 {
                     if (stackVar.Address < 0)
                         continue;
                     method.Parameters.Add((u32, stackVar.Name));
+                    vars.Remove(irContext.VariableMapping[stackVar]);
                 }
             }
             else
@@ -911,13 +934,75 @@ namespace LibDerailer.CodeGraph
                         }
                     }
                 }
-                for(int i = 0; i < argCount; i++)
-                    method.Parameters.Add((u32, $"rv{i}"));
+
+                for (int i = 0; i < argCount; i++)
+                {
+                    method.Parameters.Add((irContext.VariableMapping[regVars[i]].Type.ToCType(),
+                        irContext.VariableMapping[regVars[i]].Name));
+                    vars.Remove(irContext.VariableMapping[regVars[i]]);
+                }
             }
 
             method.Body = BasicBlocksToC(irContext);
 
+            method.Body.Statements.InsertRange(0, vars.Select(v => new CDeclaration(v.Type.ToCType(), v.Name)));
+
             return func;
+        }
+
+        private static void ChangeType(IRContext context, IRVariable variable, IRType newType)
+        {
+            //casted expression
+            var castExpr = new IRConversionExpression(variable.Type, variable);
+            foreach (var block in context.Function.BasicBlocks)
+            {
+                foreach (var instruction in block.Instructions)
+                {
+                    instruction.SubstituteUse(variable, castExpr);
+                    if (instruction is IRAssignment assgn && assgn.Destination.Equals(variable))
+                        assgn.Source = new IRConversionExpression(newType, assgn.Source);
+                }
+            }
+
+            variable.Type = newType;
+
+            new RemoveRedundantCastPass().Run(context);
+            new StructFieldPass().Run(context);
+
+            PropagateTypes(context);
+        }
+
+        private static void PropagateTypes(IRContext context)
+        {
+            bool change = true;
+            while (change)
+            {
+                change = false;
+                //search for single-def variables that end with a conversion from a pointer type to u32
+                foreach (var block in context.Function.BasicBlocks)
+                {
+                    foreach (var instruction in block.Instructions)
+                    {
+                        if (!(instruction is IRAssignment assgn) ||
+                            !(assgn.Destination is IRVariable v) ||
+                            v.Type != IRPrimitive.U32 ||
+                            !(assgn.Source is IRConversionExpression conv) ||
+                            !(conv.Operand.Type is IRPointer))
+                            continue;
+
+                        if (context.Function.Epilogue.FindDefs(0, v).Length != 1)
+                            continue;
+
+                        ChangeType(context, v, conv.Operand.Type);
+
+                        change = true;
+                        break;
+                    }
+
+                    if (change)
+                        break;
+                }
+            }
         }
 
         private static void CalculateDFSOrderIndices(IRFunction func)

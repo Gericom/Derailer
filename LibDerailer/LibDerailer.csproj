@@ -67,6 +67,7 @@
     <Compile Include="Analysis\MergeS64SubExpressionsPass.cs" />
     <Compile Include="Analysis\RemoveRedundantCastPass.cs" />
     <Compile Include="Analysis\ShiftToCastPass.cs" />
+    <Compile Include="Analysis\StructFieldPass.cs" />
     <Compile Include="Analysis\StructurizeIfsPass.cs" />
     <Compile Include="Analysis\StructurizeLoopsPass.cs" />
     <Compile Include="Analysis\CondenseMiniSwitchesPass.cs" />
@@ -94,6 +95,7 @@
     <Compile Include="CCodeGen\CType.cs" />
     <Compile Include="CCodeGen\Statements\CWhile.cs" />
     <Compile Include="CodeGraph\Constant.cs" />
+    <Compile Include="CodeGraph\DecompilerConfig.cs" />
     <Compile Include="CodeGraph\Interval.cs" />
     <Compile Include="CodeGraph\IntervalNode.cs" />
     <Compile Include="CodeGraph\Nodes\FunctionExit.cs" />
@@ -101,9 +103,13 @@
     <Compile Include="CodeGraph\VariableLongPart.cs" />
     <Compile Include="Compiler\Compiler.cs" />
     <Compile Include="IO\Elf\Dwarf2\Dwarf2.cs" />
+    <Compile Include="IO\Elf\Dwarf2\Dwarf2ArrayType.cs" />
+    <Compile Include="IO\Elf\Dwarf2\Dwarf2FormalParameter.cs" />
     <Compile Include="IO\Elf\Dwarf2\Dwarf2Inheritance.cs" />
     <Compile Include="IO\Elf\Dwarf2\Dwarf2StructureType.cs" />
+    <Compile Include="IO\Elf\Dwarf2\Dwarf2SubroutineType.cs" />
     <Compile Include="IO\Elf\Dwarf2\Dwarf2UnionType.cs" />
+    <Compile Include="IO\Elf\Dwarf2\Dwarf2Variable.cs" />
     <Compile Include="IO\Elf\Dwarf2\Enums\Dwarf2Accessibility.cs" />
     <Compile Include="IO\Elf\Dwarf2\Enums\Dwarf2Encoding.cs" />
     <Compile Include="IO\Elf\Dwarf2\Enums\Dwarf2Attribute.cs" />
@@ -130,11 +136,12 @@
     <Compile Include="IO\EndianBinaryWriter.cs" />
     <Compile Include="IO\Endianness.cs" />
     <Compile Include="IR\Expressions\IRDerefExpression.cs" />
+    <Compile Include="IR\Expressions\IRStructFieldExpression.cs" />
     <Compile Include="IR\LoopType.cs" />
     <Compile Include="CodeGraph\Nodes\ArmMachineInstruction.cs" />
     <Compile Include="CodeGraph\ArmUtil.cs" />
     <Compile Include="CodeGraph\BasicBlock.cs" />
-    <Compile Include="CodeGraph\Disassembler.cs" />
+    <Compile Include="CodeGraph\Decompiler.cs" />
     <Compile Include="CodeGraph\Function.cs" />
     <Compile Include="CodeGraph\Nodes\Branch.cs" />
     <Compile Include="CodeGraph\Nodes\FunctionEntrance.cs" />
@@ -145,7 +152,6 @@
     <Compile Include="IR\Expressions\IRVariable.cs" />
     <Compile Include="IR\Instructions\IRAssignment.cs" />
     <Compile Include="IR\Instructions\IRJump.cs" />
-    <Compile Include="IR\Instructions\IRStore.cs" />
     <Compile Include="IR\Instructions\IRReturn.cs" />
     <Compile Include="IR\IRBasicBlock.cs" />
     <Compile Include="IR\Expressions\IRBinaryExpression.cs" />
@@ -166,10 +172,13 @@
     <Compile Include="IO\IOUtil.cs" />
     <Compile Include="IR\IRContext.cs" />
     <Compile Include="IR\IRFunction.cs" />
+    <Compile Include="IR\Types\IRArray.cs" />
+    <Compile Include="IR\Types\IRMatchType.cs" />
     <Compile Include="IR\Types\IRPointer.cs" />
     <Compile Include="IR\Types\IRPrimitive.cs" />
     <Compile Include="IR\Types\IRStruct.cs" />
     <Compile Include="IR\Types\IRType.cs" />
+    <Compile Include="IR\Types\IRTypedef.cs" />
     <Compile Include="Machine\IORegisterField.cs" />
     <Compile Include="Machine\IORegister.cs" />
     <Compile Include="Machine\MemoryMap.cs" />

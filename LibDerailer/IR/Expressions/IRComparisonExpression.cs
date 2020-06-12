@@ -16,7 +16,7 @@ namespace LibDerailer.IR.Expressions
             get => _operandA;
             set
             {
-                if (!(OperandB is null) && value.Type != OperandB.Type)
+                if (!(OperandB is null) && !value.Type.IsCompatibleWith(OperandB.Type))
                     throw new IRTypeException();
                 _operandA = value;
             }
@@ -29,7 +29,7 @@ namespace LibDerailer.IR.Expressions
             get => _operandB;
             set
             {
-                if (!(OperandA is null) && value.Type != OperandA.Type)
+                if (!(OperandA is null) && !value.Type.IsCompatibleWith(OperandA.Type))
                     throw new IRTypeException();
                 _operandB = value;
             }
@@ -38,7 +38,7 @@ namespace LibDerailer.IR.Expressions
         public IRComparisonExpression(IRComparisonOperator op, IRExpression operandA, IRExpression operandB)
             : base(IRPrimitive.Bool)
         {
-            if (operandA.Type != operandB.Type)
+            if (!operandA.Type.IsCompatibleWith(operandB.Type))
                 throw new IRTypeException();
 
             Operator = op;
@@ -112,29 +112,17 @@ namespace LibDerailer.IR.Expressions
                 case IRComparisonOperator.NotEqual:
                     return OperandA.ToCExpression() != OperandB.ToCExpression();
                 case IRComparisonOperator.Less:
-                    return new CCast(((IRPrimitive) OperandA.Type).ToSigned().ToCType(), OperandA.ToCExpression()) <
-                           new CCast(((IRPrimitive) OperandB.Type).ToSigned().ToCType(), OperandB.ToCExpression());
-                case IRComparisonOperator.LessEqual:
-                    return new CCast(((IRPrimitive) OperandA.Type).ToSigned().ToCType(), OperandA.ToCExpression()) <=
-                           new CCast(((IRPrimitive) OperandB.Type).ToSigned().ToCType(), OperandB.ToCExpression());
-                case IRComparisonOperator.Greater:
-                    return new CCast(((IRPrimitive) OperandA.Type).ToSigned().ToCType(), OperandA.ToCExpression()) >
-                           new CCast(((IRPrimitive) OperandB.Type).ToSigned().ToCType(), OperandB.ToCExpression());
-                case IRComparisonOperator.GreaterEqual:
-                    return new CCast(((IRPrimitive) OperandA.Type).ToSigned().ToCType(), OperandA.ToCExpression()) <=
-                           new CCast(((IRPrimitive) OperandB.Type).ToSigned().ToCType(), OperandB.ToCExpression());
                 case IRComparisonOperator.UnsignedLess:
-                    return new CCast(((IRPrimitive) OperandA.Type).ToUnsigned().ToCType(), OperandA.ToCExpression()) <
-                           new CCast(((IRPrimitive) OperandB.Type).ToUnsigned().ToCType(), OperandB.ToCExpression());
+                    return OperandA.ToCExpression() < OperandB.ToCExpression();
+                case IRComparisonOperator.LessEqual:
                 case IRComparisonOperator.UnsignedLessEqual:
-                    return new CCast(((IRPrimitive) OperandA.Type).ToUnsigned().ToCType(), OperandA.ToCExpression()) <=
-                           new CCast(((IRPrimitive) OperandB.Type).ToUnsigned().ToCType(), OperandB.ToCExpression());
+                    return OperandA.ToCExpression() <= OperandB.ToCExpression();
+                case IRComparisonOperator.Greater:
                 case IRComparisonOperator.UnsignedGreater:
-                    return new CCast(((IRPrimitive) OperandA.Type).ToUnsigned().ToCType(), OperandA.ToCExpression()) >
-                           new CCast(((IRPrimitive) OperandB.Type).ToUnsigned().ToCType(), OperandB.ToCExpression());
+                    return OperandA.ToCExpression() > OperandB.ToCExpression();
+                case IRComparisonOperator.GreaterEqual:
                 case IRComparisonOperator.UnsignedGreaterEqual:
-                    return new CCast(((IRPrimitive) OperandA.Type).ToUnsigned().ToCType(), OperandA.ToCExpression()) >=
-                           new CCast(((IRPrimitive) OperandB.Type).ToUnsigned().ToCType(), OperandB.ToCExpression());
+                    return OperandA.ToCExpression() >= OperandB.ToCExpression();
                 default:
                     throw new ArgumentOutOfRangeException();
             }

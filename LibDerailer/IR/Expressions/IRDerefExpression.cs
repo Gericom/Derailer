@@ -11,7 +11,18 @@ namespace LibDerailer.IR.Expressions
 {
     public class IRDerefExpression : IRExpression
     {
-        public IRExpression Pointer { get; set; }
+        private IRExpression _pointer;
+
+        public IRExpression Pointer
+        {
+            get => _pointer;
+            set
+            {
+                if (!(value.Type is IRPointer p) || !p.BaseType.IsCompatibleWith(Type))
+                    throw new IRTypeException();
+                _pointer = value;
+            }
+        }
 
         public IRDerefExpression(IRType type, IRExpression pointer)
             : base(type)
@@ -51,8 +62,8 @@ namespace LibDerailer.IR.Expressions
         public override IRExpression CloneComplete()
             => new IRDerefExpression(Type, Pointer.CloneComplete());
 
-        public override CExpression ToCExpression()
-            => CExpression.Deref(new CCast(new CType(Type.ToCType(), true), Pointer.ToCExpression()));
+        public override CExpression ToCExpression() 
+            => CExpression.Deref(Pointer.ToCExpression());
 
         public override bool Unify(IRExpression template, Dictionary<IRVariable, IRExpression> varMapping)
         {

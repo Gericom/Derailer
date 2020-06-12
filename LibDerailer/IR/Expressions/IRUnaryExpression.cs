@@ -16,7 +16,7 @@ namespace LibDerailer.IR.Expressions
             get => _operand;
             set
             {
-                if (value.Type != Type)
+                if (!value.Type.IsCompatibleWith(Type))
                     throw new IRTypeException();
                 _operand = value;
             }
@@ -25,7 +25,7 @@ namespace LibDerailer.IR.Expressions
         public IRUnaryExpression(IRType type, IRUnaryOperator op, IRExpression operand)
             : base(type)
         {
-            if (operand.Type != type)
+            if (!operand.Type.IsCompatibleWith(type))
                 throw new IRTypeException();
 
             Operator = op;

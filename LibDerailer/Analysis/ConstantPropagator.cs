@@ -29,7 +29,7 @@ namespace LibDerailer.Analysis
                             var defs = block.FindDefs(i, use);
                             if (defs.Length != 1)
                                 continue;
-                            if (defs[0] is IRAssignment assgn && assgn.Source is IRConstant irc)
+                            if (defs[0] is IRAssignment assgn && assgn.Source is IRConstant irc && assgn.Destination is IRVariable)
                             {
                                 irConst = irc;
                                 v       = use;

@@ -7,24 +7,29 @@ using LibDerailer.CCodeGen;
 
 namespace LibDerailer.IR.Types
 {
-    public class IRPointer : IRType
+    public class IRTypedef : IRType
     {
+        public string Name     { get; }
         public IRType BaseType { get; }
 
-        public IRPointer(IRType baseType)
-            : base(4)
+        public IRTypedef(IRType baseType, string name)
+            : base(baseType.ByteSize)
         {
+            Name     = name;
             BaseType = baseType;
         }
 
+        public override IRType GetRootType()
+            => BaseType.GetRootType();
+
         public override CType ToCType()
-            => new CType(BaseType.ToCType(), true);
+            => new CType(Name);
 
         public override bool IsCompatibleWith(IRType b)
-            => b is IRPointer || b == IRPrimitive.U32 || (b is IRTypedef td && IsCompatibleWith(td.BaseType));
+            => BaseType.IsCompatibleWith(b);
 
         public override bool Equals(object obj)
-            => (obj is IRPointer p && p.BaseType.Equals(BaseType)) ||
+            => ReferenceEquals(this, obj) ||
                (obj is IRMatchType m && m.MatchFunc(this));
     }
 }

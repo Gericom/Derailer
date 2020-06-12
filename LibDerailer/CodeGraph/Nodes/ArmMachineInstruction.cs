@@ -329,13 +329,15 @@ namespace LibDerailer.CodeGraph.Nodes
                         Instruction.Details.Operands[1].Memory.Displacement == 0)
                     {
                         yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
-                            new IRDerefExpression(type, GetIROperand(context, 1)).Cast(IRPrimitive.U32));
+                            new IRDerefExpression(type, GetIROperand(context, 1).Cast(type.GetPointer())).Cast(
+                                IRPrimitive.U32));
                         break;
                     }
                     else if (Instruction.Details.Operands[1].Memory.Index == null)
                     {
                         var deref = new IRDerefExpression(type,
-                            GetIROperand(context, 1) + (uint) Instruction.Details.Operands[1].Memory.Displacement);
+                            (GetIROperand(context, 1) + (uint) Instruction.Details.Operands[1].Memory.Displacement)
+                            .Cast(type.GetPointer()));
                         yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
                             deref.Cast(IRPrimitive.U32));
                         break;
@@ -347,7 +349,7 @@ namespace LibDerailer.CodeGraph.Nodes
                              Instruction.Details.Operands[1].ShiftValue == 0))
                         {
                             var deref = new IRDerefExpression(type,
-                                GetIROperand(context, 1) + GetIROperand(context, 2));
+                                (GetIROperand(context, 1) + GetIROperand(context, 2)).Cast(type.GetPointer()));
                             yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
                                 deref.Cast(IRPrimitive.U32));
                             break;
@@ -389,15 +391,17 @@ namespace LibDerailer.CodeGraph.Nodes
                     if (Instruction.Details.Operands[1].Memory.Index == null &&
                         Instruction.Details.Operands[1].Memory.Displacement == 0)
                     {
-                        yield return new IRStore(parentBlock, type, GetIROperand(context, 1),
-                            GetIROperand(context, 0));
+                        yield return new IRAssignment(parentBlock,
+                            new IRDerefExpression(type, GetIROperand(context, 1).Cast(type.GetPointer())),
+                            GetIROperand(context, 0).Cast(type));
                         break;
                     }
                     else if (Instruction.Details.Operands[1].Memory.Index == null)
                     {
-                        yield return new IRStore(parentBlock, type,
-                            GetIROperand(context, 1) + (uint) Instruction.Details.Operands[1].Memory.Displacement,
-                            GetIROperand(context, 0));
+                        yield return new IRAssignment(parentBlock,
+                            new IRDerefExpression(type, (GetIROperand(context, 1) + (uint) Instruction.Details.Operands[1].Memory.Displacement)
+                            .Cast(type.GetPointer())),
+                            GetIROperand(context, 0).Cast(type));
                         break;
                     }
                     else
@@ -406,9 +410,9 @@ namespace LibDerailer.CodeGraph.Nodes
                             (Instruction.Details.Operands[1].ShiftOperation == ArmShiftOperation.ARM_SFT_LSL &&
                              Instruction.Details.Operands[1].ShiftValue == 0))
                         {
-                            yield return new IRStore(parentBlock, type,
-                                GetIROperand(context, 1) + GetIROperand(context, 2),
-                                GetIROperand(context, 0));
+                            yield return new IRAssignment(parentBlock,
+                                new IRDerefExpression(type, (GetIROperand(context, 1) + GetIROperand(context, 2)).Cast(type.GetPointer())),
+                                GetIROperand(context, 0).Cast(type));
                             break;
                         }
                         else
@@ -508,9 +512,11 @@ namespace LibDerailer.CodeGraph.Nodes
                         case ArmConditionCode.ARM_CC_NE:
                             return GetIROperand(context, 0) != GetIRSecondOperand(context, 1);
                         case ArmConditionCode.ARM_CC_HS:
-                            return GetIROperand(context, 0).UnsignedGreaterEqualAs(GetIRSecondOperand(context, 1));
+                            return GetIROperand(context, 0).Cast(IRPrimitive.U32)
+                                .UnsignedGreaterEqualAs(GetIRSecondOperand(context, 1).Cast(IRPrimitive.U32));
                         case ArmConditionCode.ARM_CC_LO:
-                            return GetIROperand(context, 0).UnsignedLessThan(GetIRSecondOperand(context, 1));
+                            return GetIROperand(context, 0).Cast(IRPrimitive.U32)
+                                .UnsignedLessThan(GetIRSecondOperand(context, 1).Cast(IRPrimitive.U32));
                         case ArmConditionCode.ARM_CC_MI:
                             return (GetIROperand(context, 0) - GetIRSecondOperand(context, 1)).LessThan(0);
                         case ArmConditionCode.ARM_CC_PL:
@@ -520,17 +526,23 @@ namespace LibDerailer.CodeGraph.Nodes
                         case ArmConditionCode.ARM_CC_VC:
                             throw new NotImplementedException("Unimplemented cmp condition");
                         case ArmConditionCode.ARM_CC_HI:
-                            return GetIROperand(context, 0).UnsignedGreaterThan(GetIRSecondOperand(context, 1));
+                            return GetIROperand(context, 0).Cast(IRPrimitive.U32)
+                                .UnsignedGreaterThan(GetIRSecondOperand(context, 1).Cast(IRPrimitive.U32));
                         case ArmConditionCode.ARM_CC_LS:
-                            return GetIROperand(context, 0).UnsignedLessEqualAs(GetIRSecondOperand(context, 1));
+                            return GetIROperand(context, 0).Cast(IRPrimitive.U32)
+                                .UnsignedLessEqualAs(GetIRSecondOperand(context, 1).Cast(IRPrimitive.U32));
                         case ArmConditionCode.ARM_CC_GE:
-                            return GetIROperand(context, 0).GreaterEqualAs(GetIRSecondOperand(context, 1));
+                            return GetIROperand(context, 0).Cast(IRPrimitive.S32)
+                                .GreaterEqualAs(GetIRSecondOperand(context, 1).Cast(IRPrimitive.S32));
                         case ArmConditionCode.ARM_CC_LT:
-                            return GetIROperand(context, 0).LessThan(GetIRSecondOperand(context, 1));
+                            return GetIROperand(context, 0).Cast(IRPrimitive.S32)
+                                .LessThan(GetIRSecondOperand(context, 1).Cast(IRPrimitive.S32));
                         case ArmConditionCode.ARM_CC_GT:
-                            return GetIROperand(context, 0).GreaterThan(GetIRSecondOperand(context, 1));
+                            return GetIROperand(context, 0).Cast(IRPrimitive.S32)
+                                .GreaterThan(GetIRSecondOperand(context, 1).Cast(IRPrimitive.S32));
                         case ArmConditionCode.ARM_CC_LE:
-                            return GetIROperand(context, 0).LessEqualAs(GetIRSecondOperand(context, 1));
+                            return GetIROperand(context, 0).Cast(IRPrimitive.S32)
+                                .LessEqualAs(GetIRSecondOperand(context, 1).Cast(IRPrimitive.S32));
                         case ArmConditionCode.ARM_CC_AL:
                             return true;
                         default:

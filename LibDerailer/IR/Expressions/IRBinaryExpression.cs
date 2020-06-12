@@ -35,15 +35,9 @@ namespace LibDerailer.IR.Expressions
 
         private void CheckTypes()
         {
-            if (OperandA.Type == Type && OperandB.Type == Type)
-                return;
-
-            if (OperandA.Type is IRPointer aPtr && Type == OperandA.Type &&
-                OperandB.Type is IRPrimitive bPrim && bPrim.BitCount == 32)
-                return;
-
-            if (OperandB.Type is IRPointer bPtr && Type == OperandB.Type &&
-                OperandA.Type is IRPrimitive aPrim && aPrim.BitCount == 32)
+            if (OperandA.Type.IsCompatibleWith(OperandB.Type) && 
+                OperandA.Type.IsCompatibleWith(Type) &&
+                OperandB.Type.IsCompatibleWith(Type))
                 return;
 
             throw new IRTypeException();

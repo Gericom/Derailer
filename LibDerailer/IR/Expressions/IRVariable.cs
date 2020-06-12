@@ -16,7 +16,7 @@ namespace LibDerailer.IR.Expressions
         public IRVariable(IRType type, string name)
             : base(type)
         {
-            if (type == IRPrimitive.Void)
+            if (!(type is IRMatchType) && type == IRPrimitive.Void)
                 throw new IRTypeException();
             Name = name;
         }

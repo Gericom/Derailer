@@ -32,9 +32,10 @@ namespace LibDerailer.Analysis
                             var defs = block.FindDefs(i, use);
                             if (defs.Length != 1)
                                 continue;
-                            if (defs[0] is IRAssignment assgn && !(assgn.Source is IRCallExpression))
+                            if (defs[0] is IRAssignment assgn && !(assgn.Source is IRCallExpression) && assgn.Destination is IRVariable)
                             {
-                                if (assgn.ParentBlock.FindUses(assgn, use).Length != 1)
+                                int useCount = assgn.ParentBlock.FindUses(assgn, use).Length;
+                                if (useCount != 1 && !(useCount > 1 && assgn.Source is IRRegisterVariable))
                                     continue;
                                 v      = use;
                                 irExpr = assgn.Source;

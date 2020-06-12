@@ -11,13 +11,14 @@ namespace LibDerailer.IR.Types
     public class IRPrimitive : IRType
     {
         public string Name     { get; }
-        public bool   IsSigned   { get; }
+        public bool   IsSigned { get; }
         public uint   BitCount { get; }
 
         private IRPrimitive(string name, bool isSigned, uint bitCount)
+            : base((bitCount + 7) / 8)
         {
             Name     = name;
-            IsSigned   = isSigned;
+            IsSigned = isSigned;
             BitCount = bitCount;
         }
 
@@ -28,7 +29,7 @@ namespace LibDerailer.IR.Types
         {
             if (IsSigned)
                 return this;
-            if(BitCount < 8)
+            if (BitCount < 8)
                 throw new IRTypeException();
             switch (BitCount)
             {
@@ -41,6 +42,7 @@ namespace LibDerailer.IR.Types
                 case 64:
                     return S64;
             }
+
             throw new IRTypeException();
         }
 
@@ -61,14 +63,19 @@ namespace LibDerailer.IR.Types
                 case 64:
                     return U64;
             }
+
             throw new IRTypeException();
         }
 
+        public override bool IsCompatibleWith(IRType b)
+            => (this == U32 && b is IRPointer) || this == b || (b is IRTypedef td && IsCompatibleWith(td.BaseType));
+
         public override bool Equals(object obj)
-            => obj is IRPrimitive p &&
-               p.Name == Name &&
-               p.IsSigned == IsSigned &&
-               p.BitCount == BitCount;
+            => (obj is IRPrimitive p &&
+                p.Name == Name &&
+                p.IsSigned == IsSigned &&
+                p.BitCount == BitCount) ||
+               (obj is IRMatchType m && m.MatchFunc(this));
 
         public static readonly IRPrimitive Void = new IRPrimitive("void", false, 0);
         public static readonly IRPrimitive Bool = new IRPrimitive("BOOL", false, 1);

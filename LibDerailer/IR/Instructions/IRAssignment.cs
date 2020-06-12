@@ -23,6 +23,8 @@ namespace LibDerailer.IR.Instructions
             if (Destination is IRVariable v)
                 Defs.Add(v);
             Uses.UnionWith(Source.GetAllVariables());
+            if (!(Destination is IRVariable))
+                Uses.UnionWith(Destination.GetAllVariables());
         }
 
         public override IEnumerable<CStatement> ToCCode()
@@ -39,16 +41,20 @@ namespace LibDerailer.IR.Instructions
 
             Uses.Clear();
             Uses.UnionWith(Source.GetAllVariables());
+
+            if(!(Destination is IRVariable))
+            {
+                Destination.Substitute(variable, expression);
+                Uses.UnionWith(Destination.GetAllVariables());
+            }
         }
 
         public override void SubstituteDef(IRVariable variable, IRExpression expression)
         {
-            if (expression is IRVariable)
+            if (Destination is IRVariable)
             {
                 if (ReferenceEquals(Destination, variable))
                     Destination = expression.CloneComplete();
-                else
-                    Destination.Substitute(variable, expression);
 
                 Defs.Clear();
                 Defs.UnionWith(Destination.GetAllVariables());
@@ -61,10 +67,32 @@ namespace LibDerailer.IR.Instructions
             var mapping = new Dictionary<IRVariable, IRExpression>();
             if (Source.Unify(template, mapping) && callback(mapping))
             {
-                var newExpr = substitution.CloneComplete();
-                foreach (var varMap in mapping)
-                    newExpr.Substitute(varMap.Key, varMap.Value);
-                Source = newExpr;
+                if (substitution is IRVariable v)
+                    Source = mapping[v].CloneComplete();
+                else
+                {
+                    var newExpr = substitution.CloneComplete();
+                    foreach (var varMap in mapping)
+                        newExpr.Substitute(varMap.Key, varMap.Value);
+                    Source = newExpr;
+                }
+            }
+            if (!(Destination is IRVariable))
+            {
+                Destination.Substitute(template, substitution, callback);
+                mapping = new Dictionary<IRVariable, IRExpression>();
+                if (Destination.Unify(template, mapping) && callback(mapping))
+                {
+                    if (substitution is IRVariable v)
+                        Destination = mapping[v].CloneComplete();
+                    else
+                    {
+                        var newExpr = substitution.CloneComplete();
+                        foreach (var varMap in mapping)
+                            newExpr.Substitute(varMap.Key, varMap.Value);
+                        Destination = newExpr;
+                    }
+                }
             }
         }
     }

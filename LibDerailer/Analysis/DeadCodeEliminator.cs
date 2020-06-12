@@ -22,7 +22,7 @@ namespace LibDerailer.Analysis
                     for (int i = 0; i < block.Instructions.Count; i++)
                     {
                         var instruction = block.Instructions[i];
-                        if (!(instruction is IRAssignment assgn) || assgn.Source is IRCallExpression)
+                        if (!(instruction is IRAssignment assgn) || assgn.Source is IRCallExpression || !(assgn.Destination is IRVariable))
                             continue;
 
                         bool used = false;

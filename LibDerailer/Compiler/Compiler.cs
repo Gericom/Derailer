@@ -30,7 +30,7 @@ namespace LibDerailer.Compiler
             p.StartInfo.FileName         = ExePath;
             p.StartInfo.UseShellExecute  = false;
             p.StartInfo.Arguments        = $"{string.Join(" ", flags)} -o \"{tmpFile2}\" \"{tmpFile}\"";
-            p.StartInfo.RedirectStandardOutput = true;
+            p.StartInfo.RedirectStandardOutput = false;//true;
             p.Start();
             p.WaitForExit();
             File.Delete(tmpFile);

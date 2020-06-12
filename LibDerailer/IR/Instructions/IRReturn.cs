@@ -16,7 +16,7 @@ namespace LibDerailer.IR.Instructions
             : base(parentBlock)
         {
             ReturnValue = returnValue;
-            if(!(ReturnValue is null))
+            if (!(ReturnValue is null))
                 Uses.UnionWith(ReturnValue.GetAllVariables());
         }
 
@@ -27,6 +27,9 @@ namespace LibDerailer.IR.Instructions
 
         public override void SubstituteUse(IRVariable variable, IRExpression expression)
         {
+            if (ReturnValue is null)
+                return;
+
             if (ReferenceEquals(ReturnValue, variable))
                 ReturnValue = expression.CloneComplete();
             else
@@ -38,10 +41,10 @@ namespace LibDerailer.IR.Instructions
 
         public override void SubstituteDef(IRVariable variable, IRExpression expression)
         {
-            
         }
 
-        public override void Substitute(IRExpression template, IRExpression substitution, IRExpression.OnMatchFoundHandler callback)
+        public override void Substitute(IRExpression template, IRExpression substitution,
+            IRExpression.OnMatchFoundHandler callback)
         {
             if (ReturnValue is null)
                 return;
@@ -49,10 +52,15 @@ namespace LibDerailer.IR.Instructions
             var mapping = new Dictionary<IRVariable, IRExpression>();
             if (ReturnValue.Unify(template, mapping) && callback(mapping))
             {
-                var newExpr = substitution.CloneComplete();
-                foreach (var varMap in mapping)
-                    newExpr.Substitute(varMap.Key, varMap.Value);
-                ReturnValue = newExpr;
+                if (substitution is IRVariable v)
+                    ReturnValue = mapping[v].CloneComplete();
+                else
+                {
+                    var newExpr = substitution.CloneComplete();
+                    foreach (var varMap in mapping)
+                        newExpr.Substitute(varMap.Key, varMap.Value);
+                    ReturnValue = newExpr;
+                }
             }
         }
     }

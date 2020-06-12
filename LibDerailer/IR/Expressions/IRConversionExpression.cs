@@ -14,7 +14,7 @@ namespace LibDerailer.IR.Expressions
             get => _operand;
             set
             {
-                if (!(value.Type is IRPrimitive opPrim))
+                if (!(value.Type is IRPrimitive) && !(value.Type is IRPointer))
                     throw new IRTypeException();
                 _operand = value;
             }

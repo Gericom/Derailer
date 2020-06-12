@@ -10,7 +10,7 @@ namespace LibDerailer.IR.Expressions
     {
         public delegate bool OnMatchFoundHandler(Dictionary<IRVariable, IRExpression> varMapping);
 
-        public IRType Type { get; }
+        public IRType Type { get; /*protected*/ set; }
 
         public IRExpression(IRType type)
         {

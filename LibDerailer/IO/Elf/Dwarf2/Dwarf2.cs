@@ -174,6 +174,18 @@ namespace LibDerailer.IO.Elf.Dwarf2
                             case Dwarf2Tag.Inheritance:
                                 die = new Dwarf2Inheritance(attribs);
                                 break;
+                            case Dwarf2Tag.FormalParameter:
+                                die = new Dwarf2FormalParameter(attribs);
+                                break;
+                            case Dwarf2Tag.SubroutineType:
+                                die = new Dwarf2SubroutineType(attribs);
+                                break;
+                            case Dwarf2Tag.Variable:
+                                die = new Dwarf2Variable(attribs);
+                                break;
+                            case Dwarf2Tag.ArrayType:
+                                die = new Dwarf2ArrayType(attribs);
+                                break;
                             default:
                                 die = new Dwarf2Die(dieType.Tag, attribs);
                                 break;
