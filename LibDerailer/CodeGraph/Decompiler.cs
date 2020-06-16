@@ -947,6 +947,8 @@ namespace LibDerailer.CodeGraph
 
             method.Body.Statements.InsertRange(0, vars.Select(v => new CDeclaration(v.Type.ToCType(), v.Name)));
 
+            func.CachedMethod = method;
+
             return func;
         }
 

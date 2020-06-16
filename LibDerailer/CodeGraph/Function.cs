@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Gee.External.Capstone.Arm;
+using LibDerailer.CCodeGen;
 using LibDerailer.CodeGraph.Nodes;
 
 namespace LibDerailer.CodeGraph
@@ -20,6 +21,7 @@ namespace LibDerailer.CodeGraph
 
         public int            StackOffset    { get; }
         public List<Variable> StackVariables { get; } = new List<Variable>();
+        public CMethod CachedMethod { get; internal set; }
 
         public Function(uint address, int stackOffset = 0)
         {
