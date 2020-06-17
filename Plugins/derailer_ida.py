@@ -1,31 +1,53 @@
 # Interop between IDA and Derailer
 # https://github.com/Gericom/Derailer
 
+from idautils import *
+from idaapi import *
+from idc import *
 import os
 
 # ...\Derailer\Derailer\bin\Debug\
 assert "DERAILER_ROOT" in os.environ
 DERAILER_PATH = os.getenv("DERAILER_ROOT")
 
+import clr
+clr.AddReference(os.path.join(DERAILER_PATH, "LibDerailer.dll"))
+
+# Ensure the right capstone dll is loaded
+import ctypes
+ctypes.cdll.LoadLibrary(os.path.join(DERAILER_PATH, "x64", "capstone.dll"))
+
+from System import Array
+from System import Byte
+from System import Exception
+from LibDerailer.CodeGraph import Decompiler
+from LibDerailer.CodeGraph import ProgramContext
+from Gee.External.Capstone.Arm import ArmDisassembleMode
+
+def resolveSymbol(addr):
+	name = idc.get_name(addr)
+	if name != "" and not name.startswith("loc_"):
+		return name
+	return None
+
+def makeProgramContext():
+	context = ProgramContext()	
+	context.ResolveSymbol += resolveSymbol
+	return context
+
 def decompile(data, addr):
-	bin_path = DERAILER_PATH + "in.bin"
-	out_path = DERAILER_PATH + "out.c"
-
-	with open(bin_path, 'wb') as file:
-		file.write(data)
-
-	try:
-		os.remove(out_path)
-	except:
-		pass
-
-	os.system(os.path.join(DERAILER_PATH, "Derailer.exe") + " Analyze-File " + bin_path + " " + out_path + " %u" % addr)
+	if GetReg(addr, "T"):
+		mode = ArmDisassembleMode.Thumb
+	else:
+		mode = ArmDisassembleMode.Arm
 
 	try:
-		with open(out_path, 'r') as file:
-			return file.readlines()
-	except:
+		func = Decompiler.DisassembleArm(Array[Byte](data), addr, mode, makeProgramContext())
+	except Exception as e:
+		print(e.ToString())
 		return ["Derailer failed to decompile the function"]
+
+	return func.CachedMethod.ToString().encode("ascii").split('\n')
 
 def decompile_window(address, size):
 	v = idaapi.simplecustviewer_t()
@@ -52,6 +74,7 @@ def current_function():
 		break
 
 	assert end != 0 and end - func.startEA > 0
+	print(end - func.startEA)
 	return (func.startEA, end - func.startEA)
 
 # Adapted from https://github.com/Cisco-Talos/GhIDA/blob/d153e0dddf437b96dbbcd9be23774a538f614317/ghida.py#L608

@@ -89,7 +89,7 @@ namespace LibDerailer.CodeGraph
                 inst.VariableDefLocs[var] = dict[(inst, var)];
         }
 
-        public static Function DisassembleArm(byte[] data, uint dataAddress, ArmDisassembleMode mode)
+        public static Function DisassembleArm(byte[] data, uint dataAddress, ArmDisassembleMode mode, ProgramContext programContext = null)
         {
             bool hasReturnValue = true;
 
@@ -481,7 +481,7 @@ namespace LibDerailer.CodeGraph
                             func.MachineRegisterVariables[
                                 ArmUtil.GetRegisterNumber(inst.Details.Operands[0].Register.Id)],
                             IOUtil.ReadU32Le(data, (int) (
-                                inst.Address + inst.Details.Operands[1].Memory.Displacement +
+                                (inst.Address & ~2) + inst.Details.Operands[1].Memory.Displacement +
                                 (mode == ArmDisassembleMode.Thumb ? 4 : 8) - dataAddress))));
                     }
                     else if (inst.Details.BelongsToGroup(ArmInstructionGroupId.ARM_GRP_CALL))
@@ -822,6 +822,7 @@ namespace LibDerailer.CodeGraph
 
             var irFunc    = new IRFunction();
             var irContext = new IRContext();
+            irContext.ProgramContext = programContext;
             irContext.Function = irFunc;
 
             foreach (var regVar in regVars)

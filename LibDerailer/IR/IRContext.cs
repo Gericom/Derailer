@@ -10,6 +10,8 @@ namespace LibDerailer.IR
 {
     public class IRContext
     {
+        public ProgramContext ProgramContext { get; set; }
+
         public Dictionary<Variable, IRVariable> VariableMapping { get; } = new Dictionary<Variable, IRVariable>();
 
         public Dictionary<BasicBlock, IRBasicBlock> BasicBlockMapping { get; } =

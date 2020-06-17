@@ -23,6 +23,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -100,6 +101,7 @@
     <Compile Include="CodeGraph\IntervalNode.cs" />
     <Compile Include="CodeGraph\Nodes\FunctionExit.cs" />
     <Compile Include="CodeGraph\Nodes\LongAdd.cs" />
+    <Compile Include="CodeGraph\ProgramContext.cs" />
     <Compile Include="CodeGraph\VariableLongPart.cs" />
     <Compile Include="Compiler\Compiler.cs" />
     <Compile Include="IO\Elf\Dwarf2\Dwarf2.cs" />
