@@ -32,7 +32,8 @@ namespace LibDerailer.CCodeGen
 
             if (Statements.Count == 1)
             {
-                foreach (var tok in Statements[0].ToTokens())
+                yield return new CToken(CTokenType.Whitespace, "    ");
+                foreach (var tok in AstUtil.Indent(Statements[0].ToTokens()))
                     yield return tok;
                 if (Statements[0] is CExpression)
                     yield return new CToken(CTokenType.Semicolon, ";");

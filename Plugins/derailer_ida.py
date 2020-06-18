@@ -26,6 +26,7 @@ from LibDerailer.CodeGraph import Decompiler
 from LibDerailer.CodeGraph import ProgramContext
 from Gee.External.Capstone.Arm import ArmDisassembleMode
 from LibDerailer.CCodeGen import CTokenType
+from System import Diagnostics
 
 def resolveSymbol(addr):
 	name = idc.get_name(addr)
@@ -125,10 +126,23 @@ class DecompileHandler(idaapi.action_handler_t):
 	def update(self, ctx):
 		return idaapi.AST_ENABLE_ALWAYS
 
+class DecompileDebugHandler(idaapi.action_handler_t):
+	def __init__(self):
+		idaapi.action_handler_t.__init__(self)
+
+	def activate(self, ctx):
+		func = current_function()
+		Diagnostics.Debugger.Launch()
+		decompile_window(func[0], func[1])
+
+	def update(self, ctx):
+		return idaapi.AST_ENABLE_ALWAYS
+
 class DisHooks(idaapi.UI_Hooks):
 	def finish_populating_tform_popup(self, form, popup):
 		if idaapi.get_tform_type(form) == idaapi.BWN_DISASMS:
 			idaapi.attach_action_to_popup(form, popup, "derailer:decompile", None)
+			idaapi.attach_action_to_popup(form, popup, "derailer:decompile_debug", None)
 
 hooks = DisHooks()
 hooks.hook()
@@ -138,6 +152,15 @@ idaapi.register_action(idaapi.action_desc_t(
 	"Decompile function with Derailer",
 	DecompileHandler(),
 	'Ctrl+Shift+M',
+	None,
+	69
+))
+
+idaapi.register_action(idaapi.action_desc_t(
+	"derailer:decompile_debug",
+	"Decompile function with Derailer (Debug)",
+	DecompileDebugHandler(),
+	'Ctrl+Shift+N',
 	None,
 	69
 ))

@@ -143,7 +143,7 @@ namespace LibDerailer.IR
                         if (instruction.Uses.Contains(v))
                             useLocs.Add(instruction);
 
-                        if (instruction.Defs.Contains(v) || instruction == Instructions[instIdx])
+                        if (instruction.Defs.Contains(v) || (instIdx < Instructions.Count && instruction == Instructions[instIdx]))
                         {
                             gotDef = true;
                             break;

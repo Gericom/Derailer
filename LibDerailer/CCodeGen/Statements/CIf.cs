@@ -52,9 +52,6 @@ namespace LibDerailer.CCodeGen.Statements
             if (!(ElseBody is null))
             {
                 yield return new CToken(CTokenType.Keyword, "else");
-                yield return new CToken(CTokenType.Whitespace, " ");
-                yield return new CToken(CTokenType.OpenParen, "(");
-                yield return new CToken(CTokenType.CloseParen, ")");
                 yield return new CToken(CTokenType.Whitespace, "\n");
 
                 foreach (var tok in ElseBody.ToTokens())
