@@ -13,7 +13,7 @@ namespace Derailer
     {
         static void Main(string[] args)
         {
-            if (args.Length != 4 && args[0] != "Analyze-File")
+            if (args.Length != 4 || args[0] != "Analyze-File")
                 return;
 
             Console.WriteLine("Analyzing binary");

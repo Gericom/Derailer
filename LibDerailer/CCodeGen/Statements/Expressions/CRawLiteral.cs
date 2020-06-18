@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
 
 namespace LibDerailer.CCodeGen.Statements.Expressions
@@ -24,6 +25,11 @@ namespace LibDerailer.CCodeGen.Statements.Expressions
         public static implicit operator CRawLiteral<T>(T a)
         {
             return new CRawLiteral<T>(a);
+        }
+
+        public override IEnumerable<CToken> ToTokens()
+        {
+            yield return new CToken(CTokenType.Literal, ToString());
         }
     }
 }

@@ -75,6 +75,9 @@
     <Compile Include="CCodeGen\CMethod.cs" />
     <Compile Include="CCodeGen\AstUtil.cs" />
     <Compile Include="CCodeGen\CBlock.cs" />
+    <Compile Include="CCodeGen\CToken.cs" />
+    <Compile Include="CCodeGen\CTokenType.cs" />
+    <Compile Include="CCodeGen\IASTNode.cs" />
     <Compile Include="CCodeGen\Statements\CContinue.cs" />
     <Compile Include="CCodeGen\Statements\CBreak.cs" />
     <Compile Include="CCodeGen\Statements\CDeclaration.cs" />

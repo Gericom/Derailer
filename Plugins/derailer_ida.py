@@ -10,6 +10,8 @@ import os
 assert "DERAILER_ROOT" in os.environ
 DERAILER_PATH = os.getenv("DERAILER_ROOT")
 
+CLANG_FORMAT = "C:\\Program Files\\LLVM\\bin\\clang-format.exe"
+
 import clr
 clr.AddReference(os.path.join(DERAILER_PATH, "LibDerailer.dll"))
 
@@ -23,6 +25,7 @@ from System import Exception
 from LibDerailer.CodeGraph import Decompiler
 from LibDerailer.CodeGraph import ProgramContext
 from Gee.External.Capstone.Arm import ArmDisassembleMode
+from LibDerailer.CCodeGen import CTokenType
 
 def resolveSymbol(addr):
 	name = idc.get_name(addr)
@@ -47,7 +50,39 @@ def decompile(data, addr):
 		print(e.ToString())
 		return ["Derailer failed to decompile the function"]
 
-	return func.CachedMethod.ToString().encode("ascii").split('\n')
+	tokens = func.CachedMethod.ToTokens()
+
+	result = ""
+	for token in tokens:
+		colors = {
+			CTokenType.Whitespace: idaapi.SCOLOR_INSN,
+
+			CTokenType.Operator:   idaapi.SCOLOR_ALTOP,
+			CTokenType.Literal:    idaapi.SCOLOR_REGCMT, # TODO
+			CTokenType.Type:       idaapi.SCOLOR_CREFTAIL, # TODO
+			CTokenType.Identifier: idaapi.SCOLOR_SYMBOL, # TODO
+			CTokenType.Keyword:    idaapi.SCOLOR_KEYWORD,
+
+			CTokenType.OpenBrace:  idaapi.SCOLOR_SYMBOL,
+			CTokenType.CloseBrace: idaapi.SCOLOR_SYMBOL,
+
+			CTokenType.OpenParen:  idaapi.SCOLOR_SYMBOL,
+			CTokenType.CloseParen: idaapi.SCOLOR_SYMBOL,
+
+			CTokenType.OpenBracket:  idaapi.SCOLOR_SYMBOL,
+			CTokenType.CloseBracket: idaapi.SCOLOR_SYMBOL,
+
+			CTokenType.Comma:     idaapi.SCOLOR_SYMBOL,
+			CTokenType.Semicolon: idaapi.SCOLOR_SYMBOL,
+			CTokenType.Colon:     idaapi.SCOLOR_SYMBOL,
+
+			CTokenType.Cast: idaapi.SCOLOR_DNUM
+		}
+
+		result += idaapi.COLSTR(token.Data, colors[token.Type])
+
+
+	return result.encode("ascii").split('\n')
 
 def decompile_window(address, size):
 	v = idaapi.simplecustviewer_t()

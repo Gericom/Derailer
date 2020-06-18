@@ -17,5 +17,19 @@ namespace LibDerailer.CCodeGen.Statements
         }
 
         public override string ToString() => !(ReturnVal is null) ? $"return {ReturnVal};" : "return;";
+
+        public override IEnumerable<CToken> ToTokens()
+        {
+            yield return new CToken(CTokenType.Keyword, "return");
+
+            if (!(ReturnVal is null))
+            {
+                yield return new CToken(CTokenType.Whitespace, " ");
+                foreach (var tok in ReturnVal.ToTokens())
+                    yield return tok;
+            }
+
+            yield return new CToken(CTokenType.Semicolon, ";");
+        }
     }
 }

@@ -1,4 +1,7 @@
-﻿namespace LibDerailer.CCodeGen.Statements.Expressions
+﻿using System.Collections.Generic;
+using System.Linq;
+
+namespace LibDerailer.CCodeGen.Statements.Expressions
 {
     public class CCast : CExpression
     {
@@ -17,6 +20,15 @@
             if (!(Expression is CLiteral) && (Expression as CMethodCall)?.Name != "[]")
                 expr = $"({expr})";
             return $"({Type}) {expr}";
+        }
+
+        public override IEnumerable<CToken> ToTokens()
+        {
+            yield return new CToken(CTokenType.Cast, $"({Type})");
+            yield return new CToken(CTokenType.Whitespace, " ");
+
+            foreach (var tok in Expression.ToTokens())
+                yield return tok;
         }
     }
 }

@@ -9,5 +9,11 @@ namespace LibDerailer.CCodeGen.Statements
     public class CBreak : CStatement
     {
         public override string ToString() => "break;";
+
+        public override IEnumerable<CToken> ToTokens()
+        {
+            yield return new CToken(CTokenType.Keyword, "break");
+            yield return new CToken(CTokenType.Semicolon, ";");
+        }
     }
 }

@@ -1,4 +1,6 @@
-﻿namespace LibDerailer.CCodeGen.Statements
+﻿using System.Collections.Generic;
+
+namespace LibDerailer.CCodeGen.Statements
 {
     public class CLabel : CStatement
     {
@@ -10,5 +12,12 @@
         }
 
         public override string ToString() => $"{Name}:;";
+
+        public override IEnumerable<CToken> ToTokens()
+        {
+            yield return new CToken(CTokenType.Identifier, Name);
+            yield return new CToken(CTokenType.Colon, ":");
+            yield return new CToken(CTokenType.Semicolon, ";");
+        }
     }
 }

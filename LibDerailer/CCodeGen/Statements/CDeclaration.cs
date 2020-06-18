@@ -18,5 +18,12 @@ namespace LibDerailer.CCodeGen.Statements
         }
 
         public override string ToString() => $"{Type} {Name};";
+        public override IEnumerable<CToken> ToTokens()
+        {
+            yield return new CToken(CTokenType.Type, Type.ToString());
+            yield return new CToken(CTokenType.Whitespace, " ");
+            yield return new CToken(CTokenType.Identifier, Name);
+            yield return new CToken(CTokenType.Semicolon, ";");
+        }
     }
 }

@@ -1,4 +1,6 @@
-﻿using System.Text;
+﻿using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 using LibDerailer.CCodeGen.Statements.Expressions;
 
 namespace LibDerailer.CCodeGen.Statements
@@ -32,6 +34,32 @@ namespace LibDerailer.CCodeGen.Statements
             builder.Append("\n}");
 
             return builder.ToString();
+        }
+
+        public override IEnumerable<CToken> ToTokens()
+        {
+            yield return new CToken(CTokenType.Keyword, "if");
+            yield return new CToken(CTokenType.Whitespace, " ");
+            yield return new CToken(CTokenType.OpenParen, "(");
+            foreach (var tok in Predicate.ToTokens())
+                yield return tok;
+            yield return new CToken(CTokenType.CloseParen, ")");
+            yield return new CToken(CTokenType.Whitespace, "\n");
+
+            foreach (var tok in IfBody.ToTokens())
+                yield return tok;
+ 
+            if (!(ElseBody is null))
+            {
+                yield return new CToken(CTokenType.Keyword, "else");
+                yield return new CToken(CTokenType.Whitespace, " ");
+                yield return new CToken(CTokenType.OpenParen, "(");
+                yield return new CToken(CTokenType.CloseParen, ")");
+                yield return new CToken(CTokenType.Whitespace, "\n");
+
+                foreach (var tok in ElseBody.ToTokens())
+                    yield return tok;
+            }
         }
     }
 }
