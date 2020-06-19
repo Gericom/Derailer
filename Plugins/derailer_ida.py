@@ -85,25 +85,78 @@ def decompile(data, addr):
 
 	return result.encode("ascii").split('\n')
 
-def decompile_window(address, size):
-	v = idaapi.simplecustviewer_t()
+def get_highlight():
+	view = ida_kernwin.get_current_viewer()
 
-	if not v.Create("Derailer: 0x%x" % address):
-		print("Failed to create window!")
-		return
+	symbol = None
+	ret = ida_kernwin.get_highlight(view)
+	if ret and ret[1]:
+		symbol = ret[0]
 
-	idaapi.msg("Addr: %x, size: %d\n" % (address, size))
-	data = idaapi.get_many_bytes(address, size)
-	decompiled = decompile(data, address)
+	return (view, symbol)
 
-	for line in decompiled:
-		v.AddLine(line)
+def goto(shift=False):
+	view, symbol = get_highlight()
 
-	v.Show()
+	if not symbol:
+		return -1
 
+	address = idaapi.get_name_ea(idc.BADADDR, symbol)
+	if not address:
+		return -1
 
-def current_function():
-	func = idaapi.get_func(ScreenEA())
+	# idaapi.jumpto(address)
+
+	return address
+
+def rename():
+	view, symbol = get_highlight()
+
+	if not symbol:
+		return False
+
+	new_name = idaapi.askstr(0, 'New Name', 'Rename Function')
+	if not new_name or len(new_name) == 0:
+		return False
+
+	for letter in new_name:
+		if not (letter.isdigit() or letter.isalpha() or letter == '_'):
+			print("Invalid identifier")
+			return False
+
+	# Duplicate check
+	# 	address = idaapi.get_name_ea(idc.BADADDR, new_name)
+	# 	if address:
+	# 		print("Duplicate\n")
+	# 		return False
+
+	address = idaapi.get_name_ea(idc.BADADDR, symbol)
+	if not address:
+		print("Not a function")
+		return False
+
+	idc.MakeName(address, new_name)
+	return True
+
+def retype():
+	view, symbol = get_highlight()
+	address = idaapi.get_name_ea(idc.BADADDR, symbol)
+
+	if not symbol or not address:
+		return False
+
+	new_name = idaapi.askstr(0, GetType(address).replace('(', ' ' + symbol + '('), 'Retype Function')
+	if not new_name or len(new_name) == 0:
+		print('Bad name')
+		print(new_name)
+		return False
+
+	SetType(address, new_name)
+
+	return True
+
+def lookup_function(func):
+	func = idaapi.get_func(func)
 	end = 0
 	for f in Functions(func.startEA + func.size(), func.startEA + func.size() + 4096):
 		end = f
@@ -113,6 +166,59 @@ def current_function():
 	print(end - func.startEA)
 	return (func.startEA, end - func.startEA)
 
+
+class DerailerView(idaapi.simplecustviewer_t):
+	def OnDblClick(self, shift):
+		res = goto(shift)
+		assert res != -1
+		self.populate(res)
+
+	def OnKeydown(self, vkey, shift):
+		key = chr(vkey)
+
+		if key == 'N':
+			rename()
+		elif key == 'Y':
+			retype()
+
+		self.repopulate()
+
+		return True
+
+	def repopulate(self):
+		self.populate(self.last_addr)
+
+	def populate(self, address):
+		info = lookup_function(address)
+		address = info[0]
+		size = info[1]
+
+		self.last_addr = address
+
+		idaapi.msg("Addr: %x, size: %d\n" % (address, size))
+		data = idaapi.get_many_bytes(address, size)
+		decompiled = decompile(data, address)
+
+		self.ClearLines()
+		for line in decompiled:
+			self.AddLine(line)
+
+		self.Show()
+
+
+def decompile_window(address):
+	v = DerailerView()
+
+	if not v.Create("Derailer: 0x%x" % address):
+		print("Failed to create window!")
+		return
+
+	v.populate(address)
+
+def current_function():
+	func = idaapi.get_func(ScreenEA())
+	return func.startEA
+
 # Adapted from https://github.com/Cisco-Talos/GhIDA/blob/d153e0dddf437b96dbbcd9be23774a538f614317/ghida.py#L608
 
 class DecompileHandler(idaapi.action_handler_t):
@@ -120,8 +226,7 @@ class DecompileHandler(idaapi.action_handler_t):
 		idaapi.action_handler_t.__init__(self)
 
 	def activate(self, ctx):
-		func = current_function()
-		decompile_window(func[0], func[1])
+		decompile_window(current_function())
 
 	def update(self, ctx):
 		return idaapi.AST_ENABLE_ALWAYS
@@ -131,9 +236,8 @@ class DecompileDebugHandler(idaapi.action_handler_t):
 		idaapi.action_handler_t.__init__(self)
 
 	def activate(self, ctx):
-		func = current_function()
 		Diagnostics.Debugger.Launch()
-		decompile_window(func[0], func[1])
+		decompile_window(current_function())
 
 	def update(self, ctx):
 		return idaapi.AST_ENABLE_ALWAYS
