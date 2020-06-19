@@ -9,7 +9,8 @@ namespace LibDerailer.CodeGraph.Nodes
 {
     public abstract class Instruction
     {
-        public int OrderIndex { get; set; }
+        public uint              Address      { get; }
+        public int               OrderIndex   { get; set; }
         public ArmConditionCode  Condition    { get; set; }
         public HashSet<Variable> VariableUses { get; } = new HashSet<Variable>();
         public HashSet<Variable> VariableDefs { get; } = new HashSet<Variable>();
@@ -25,8 +26,9 @@ namespace LibDerailer.CodeGraph.Nodes
 
         public List<(bool isDef, Operand op)> Operands { get; } = new List<(bool isDef, Operand op)>();
 
-        public Instruction(ArmConditionCode condition)
+        public Instruction(uint address, ArmConditionCode condition)
         {
+            Address = address;
             Condition = condition;
         }
 

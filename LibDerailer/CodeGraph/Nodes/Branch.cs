@@ -14,8 +14,8 @@ namespace LibDerailer.CodeGraph.Nodes
     {
         public BasicBlock Destination { get; set; }
 
-        public Branch(ArmConditionCode condition, BasicBlock destination, Variable cpsr = null)
-            : base(condition)
+        public Branch(uint address, ArmConditionCode condition, BasicBlock destination, Variable cpsr = null)
+            : base(address, condition)
         {
             if(destination == null)
                 throw new ArgumentNullException(nameof(destination));

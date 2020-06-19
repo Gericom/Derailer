@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -89,7 +90,8 @@ namespace LibDerailer.CodeGraph
                 inst.VariableDefLocs[var] = dict[(inst, var)];
         }
 
-        public static Function DisassembleArm(byte[] data, uint dataAddress, ArmDisassembleMode mode, ProgramContext programContext = null)
+        public static Function DisassembleArm(byte[] data, uint dataAddress, ArmDisassembleMode mode,
+            ProgramContext programContext = null)
         {
             bool hasReturnValue = true;
 
@@ -400,7 +402,8 @@ namespace LibDerailer.CodeGraph
                             curBlock.Successors.Add(boundaries[addr]);
                             boundaries[addr].Predecessors.Add(curBlock);
 
-                            curBlock.BlockBranch = new Branch(inst.Details.ConditionCode, boundaries[addr],
+                            curBlock.BlockBranch = new Branch((uint) inst.Address, inst.Details.ConditionCode,
+                                boundaries[addr],
                                 func.MachineRegisterVariables[16]);
                             curBlock.Instructions.Add(curBlock.BlockBranch);
                         }
@@ -477,12 +480,14 @@ namespace LibDerailer.CodeGraph
                     {
                         //Constant pool load
                         curBlock.Instructions.Add(new LoadConstant(
+                            (uint) inst.Address,
                             inst.Details.ConditionCode,
                             func.MachineRegisterVariables[
                                 ArmUtil.GetRegisterNumber(inst.Details.Operands[0].Register.Id)],
                             IOUtil.ReadU32Le(data, (int) (
                                 (inst.Address & ~2) + inst.Details.Operands[1].Memory.Displacement +
-                                (mode == ArmDisassembleMode.Thumb ? 4 : 8) - dataAddress))));
+                                (mode == ArmDisassembleMode.Thumb ? 4 : 8) - dataAddress)),
+                            func.MachineRegisterVariables[16]));
                     }
                     else if (inst.Details.BelongsToGroup(ArmInstructionGroupId.ARM_GRP_CALL))
                     {
@@ -682,6 +687,7 @@ namespace LibDerailer.CodeGraph
                 else
                 {
                     var branch = new Branch(
+                        0,
                         block.BlockCondition == ArmConditionCode.Invalid
                             ? blockEpInsts.Last().Condition
                             : block.BlockCondition,
@@ -702,12 +708,12 @@ namespace LibDerailer.CodeGraph
                 FunctionExit funcExit;
                 if (hasReturnValue)
                 {
-                    funcExit = new FunctionExit(func.MachineRegisterVariables[0]);
+                    funcExit = new FunctionExit(epilogue.Instructions[0].Address, func.MachineRegisterVariables[0]);
                     funcExit.VariableUseLocs[func.MachineRegisterVariables[0]] = epilogue.Instructions.Last()
                         .VariableUseLocs[func.MachineRegisterVariables[0]];
                 }
                 else
-                    funcExit = new FunctionExit(null);
+                    funcExit = new FunctionExit(epilogue.Instructions[0].Address, null);
 
                 epilogue.Instructions.Clear();
                 epilogue.Instructions.Add(funcExit);
@@ -780,7 +786,7 @@ namespace LibDerailer.CodeGraph
                         var varCHi = (Variable) armInst.Operands[0].op;
                         varCHi.LongPart = VariableLongPart.Hi;
 
-                        var longAdd = new LongAdd(varCLo, varCHi, varALo, varAHi, varBLo, varBHi);
+                        var longAdd = new LongAdd(armInst2.Address, varCLo, varCHi, varALo, varAHi, varBLo, varBHi);
                         longAdd.VariableUseLocs[varALo] = armInst2.VariableUseLocs[varALo];
                         longAdd.VariableUseLocs[varAHi] = armInst.VariableUseLocs[varAHi];
                         if (varBLo is Variable)
@@ -823,7 +829,7 @@ namespace LibDerailer.CodeGraph
             var irFunc    = new IRFunction();
             var irContext = new IRContext();
             irContext.ProgramContext = programContext;
-            irContext.Function = irFunc;
+            irContext.Function       = irFunc;
 
             foreach (var regVar in regVars)
                 irContext.VariableMapping.Add(regVar, new IRRegisterVariable(IRPrimitive.U32, regVar.Name));
@@ -1243,9 +1249,11 @@ namespace LibDerailer.CodeGraph
                         : block.BlockCondition;
                     for (int i = 0; i < block.Instructions.Count; i++)
                     {
-                        if (!(block.Instructions[i] is ArmMachineInstruction mInst) ||
-                            ArmUtil.IsJump(mInst.Instruction))
+                        var mInst = block.Instructions[i];
+                        if ((mInst is ArmMachineInstruction m && ArmUtil.IsJump(m.Instruction)) ||
+                            (!(mInst is ArmMachineInstruction) && !(mInst is LoadConstant)))
                             continue;
+
                         if (mInst.Condition == blockCondition)
                             continue;
                         var oppCc = ArmUtil.GetOppositeCondition(mInst.Condition);
@@ -1266,7 +1274,7 @@ namespace LibDerailer.CodeGraph
                                     k++;
 
                                 var newBlock1 = new BasicBlock(
-                                    (uint) ((ArmMachineInstruction) block.Instructions[i]).Instruction.Address,
+                                    block.Instructions[i].Address,
                                     mInst.Condition);
                                 newBlock1.BlockConditionInstruction =
                                     mInst.VariableUseLocs[func.MachineRegisterVariables[16]].First();
@@ -1274,7 +1282,7 @@ namespace LibDerailer.CodeGraph
                                 block.Instructions.RemoveRange(i, j - i);
 
                                 var newBlock2 = new BasicBlock(
-                                    (uint) ((ArmMachineInstruction) block.Instructions[i]).Instruction.Address,
+                                    block.Instructions[i].Address,
                                     oppCc);
                                 newBlock2.BlockConditionInstruction =
                                     mInst.VariableUseLocs[func.MachineRegisterVariables[16]].First();
@@ -1285,8 +1293,7 @@ namespace LibDerailer.CodeGraph
 
                                 if (block.Instructions.Count - i > 0)
                                 {
-                                    newBlock3 = new BasicBlock(
-                                        (uint) ((ArmMachineInstruction) block.Instructions[i]).Instruction.Address);
+                                    newBlock3 = new BasicBlock(block.Instructions[i].Address);
                                     newBlock3.Instructions.AddRange(block.Instructions.Skip(i));
                                     block.Instructions.RemoveRange(i, block.Instructions.Count - i);
                                     newBlock3.Successors.AddRange(block.Successors);
@@ -1345,7 +1352,7 @@ namespace LibDerailer.CodeGraph
                                 block.Successors.Add(newBlock2);
                                 newBlock2.Predecessors.Add(block);
 
-                                block.BlockBranch = new Branch(oppCc, newBlock2, func.MachineRegisterVariables[16]);
+                                block.BlockBranch = new Branch(0, oppCc, newBlock2, func.MachineRegisterVariables[16]);
                                 block.Instructions.Add(block.BlockBranch);
 
                                 if (!(newBlock1.Instructions.Last() is ArmMachineInstruction lastMInst) ||
@@ -1355,7 +1362,7 @@ namespace LibDerailer.CodeGraph
                                     {
                                         newBlock1.Successors.Add(newBlock3);
                                         newBlock3.Predecessors.Add(newBlock1);
-                                        newBlock1.BlockBranch = new Branch(newBlock1.BlockCondition, newBlock3,
+                                        newBlock1.BlockBranch = new Branch(0, newBlock1.BlockCondition, newBlock3,
                                             func.MachineRegisterVariables[16]);
                                         newBlock1.Instructions.Add(newBlock1.BlockBranch);
                                     }
@@ -1382,7 +1389,7 @@ namespace LibDerailer.CodeGraph
                             }
                         }
 
-                        var newBlock = new BasicBlock((uint) mInst.Instruction.Address, mInst.Condition);
+                        var newBlock = new BasicBlock(mInst.Address, mInst.Condition);
                         newBlock.BlockConditionInstruction =
                             mInst.VariableUseLocs[func.MachineRegisterVariables[16]].First();
                         newBlock.Instructions.AddRange(block.Instructions.Skip(i).Take(j - i));
@@ -1391,8 +1398,7 @@ namespace LibDerailer.CodeGraph
                         BasicBlock newBlock4 = null;
                         if (block.Instructions.Count - i > 0)
                         {
-                            newBlock4 = new BasicBlock(
-                                (uint) ((ArmMachineInstruction) block.Instructions[i]).Instruction.Address);
+                            newBlock4 = new BasicBlock(block.Instructions[i].Address);
                             newBlock4.Instructions.AddRange(block.Instructions.Skip(i));
                             block.Instructions.RemoveRange(i, block.Instructions.Count - i);
                             newBlock4.Successors.AddRange(block.Successors);
@@ -1432,7 +1438,7 @@ namespace LibDerailer.CodeGraph
                             block.Successors.Add(newBlock4);
                             newBlock4.Predecessors.Add(block);
 
-                            block.BlockBranch = new Branch(oppCc, newBlock4, func.MachineRegisterVariables[16]);
+                            block.BlockBranch = new Branch(0, oppCc, newBlock4, func.MachineRegisterVariables[16]);
                             block.Instructions.Add(block.BlockBranch);
 
                             if (!(newBlock.Instructions.Last() is ArmMachineInstruction lastMInst3) ||
@@ -1447,7 +1453,7 @@ namespace LibDerailer.CodeGraph
                         }
                         else
                         {
-                            block.BlockBranch = new Branch(oppCc, block.Successors.First(s => s != newBlock),
+                            block.BlockBranch = new Branch(0, oppCc, block.Successors.First(s => s != newBlock),
                                 func.MachineRegisterVariables[16]);
                             block.Instructions.Add(block.BlockBranch);
                         }
@@ -1498,22 +1504,21 @@ namespace LibDerailer.CodeGraph
                     //find all instructions that depend on the same flag producing instruction and use the same condition code
                     var cInsts = block.Instructions
                         .Where(inst =>
-                            inst is ArmMachineInstruction mInst2 &&
-                            mInst2.Condition == instruction.Condition &&
+                            (inst is ArmMachineInstruction || inst is LoadConstant) &&
+                            inst.Condition == instruction.Condition &&
                             inst.VariableUses.Contains(func.MachineRegisterVariables[16]) &&
                             inst.VariableUseLocs[func.MachineRegisterVariables[16]].First() ==
                             instruction.VariableUseLocs[func.MachineRegisterVariables[16]].First())
                         .ToArray();
                     //Assume at most one split is made
-                    int                   firstPartLength  = cInsts.Length;
-                    int                   secondPartLength = 0;
-                    ArmMachineInstruction secondPartStart  = null;
+                    int         firstPartLength  = cInsts.Length;
+                    int         secondPartLength = 0;
+                    Instruction secondPartStart  = null;
                     for (int j = 0; j < cInsts.Length - 1; j++)
                     {
-                        var inst     = (ArmMachineInstruction) cInsts[j];
-                        var nextInst = (ArmMachineInstruction) cInsts[j + 1];
-                        if (inst.Instruction.Address + inst.Instruction.Bytes.Length !=
-                            nextInst.Instruction.Address)
+                        var inst     = cInsts[j];
+                        var nextInst = cInsts[j + 1];
+                        if (inst.Address + /*inst.Instruction.Bytes.Length*/4 != nextInst.Address)
                         {
                             firstPartLength  = j + 1;
                             secondPartLength = cInsts.Length - firstPartLength;
@@ -1531,8 +1536,8 @@ namespace LibDerailer.CodeGraph
                                 .SelectMany(dl => dl.Value)
                                 .Where(inst2 => !cInsts.Take(firstPartLength).Contains(inst2))
                                 .All(inst2 =>
-                                    !(inst2 is ArmMachineInstruction m) ||
-                                    m.Instruction.Address >= secondPartStart.Instruction.Address)))
+                                    (!(inst2 is ArmMachineInstruction) && !(inst2 is LoadConstant)) ||
+                                    inst2.Address >= secondPartStart.Address)))
                     {
                         block.Instructions.RemoveRange(i, firstPartLength);
                         block.Instructions.InsertRange(block.Instructions.IndexOf(secondPartStart),

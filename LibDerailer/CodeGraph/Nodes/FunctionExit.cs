@@ -11,8 +11,8 @@ namespace LibDerailer.CodeGraph.Nodes
 {
     public class FunctionExit : Instruction
     {
-        public FunctionExit(Variable returnValue)
-            : base(ArmConditionCode.ARM_CC_AL)
+        public FunctionExit(uint address, Variable returnValue)
+            : base(address, ArmConditionCode.ARM_CC_AL)
         {
             if (returnValue != null)
                 VariableUses.Add(returnValue);

@@ -26,9 +26,13 @@ namespace LibDerailer.CCodeGen.Statements.Expressions
         {
             yield return new CToken(CTokenType.Cast, $"({Type})");
             yield return new CToken(CTokenType.Whitespace, " ");
-
+            bool braces = !(Expression is CLiteral) && (Expression as CMethodCall)?.Name != "[]";
+            if (braces)
+                yield return new CToken(CTokenType.OpenParen, "(");
             foreach (var tok in Expression.ToTokens())
                 yield return tok;
+            if (braces)
+                yield return new CToken(CTokenType.CloseParen, ")");
         }
     }
 }

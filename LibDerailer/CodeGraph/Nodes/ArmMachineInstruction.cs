@@ -17,7 +17,7 @@ namespace LibDerailer.CodeGraph.Nodes
         public ArmInstruction Instruction { get; }
 
         public ArmMachineInstruction(ArmInstruction instruction, Variable[] regVars)
-            : base(instruction.Details.ConditionCode)
+            : base((uint)instruction.Address, instruction.Details.ConditionCode)
         {
             Instruction = instruction;
             var defs = instruction.Details.AllWrittenRegisters
@@ -143,41 +143,6 @@ namespace LibDerailer.CodeGraph.Nodes
                     return rm.ShiftRightArithmetic(Instruction.Details.Operands[idx].ShiftValue);
                 case ArmShiftOperation.ARM_SFT_ASR_REG:
                     return rm.ShiftRightArithmetic(rs);
-                default:
-                    throw new NotImplementedException("Unimplemented shift!");
-            }
-        }
-
-        private CExpression GetSecondOperand(int idx)
-        {
-            if (Instruction.Details.Operands[idx].Type == ArmOperandType.Immediate)
-                return (uint) Instruction.Details.Operands[idx].Immediate;
-
-            var rm = new CVariable(((Variable) Operands[idx].op).Name);
-
-            if (Instruction.Details.Operands[idx].ShiftOperation == ArmShiftOperation.Invalid ||
-                (Instruction.Details.Operands[idx].ShiftOperation == ArmShiftOperation.ARM_SFT_LSL &&
-                 Instruction.Details.Operands[idx].ShiftValue == 0))
-                return rm;
-
-            CCodeGen.Statements.Expressions.CVariable rs = null;
-            if (Instruction.Details.Operands[idx].ShiftOperation >= ArmShiftOperation.ARM_SFT_LSL_REG)
-                rs = new CVariable(((Variable) Operands[idx + 1].op).Name);
-
-            switch (Instruction.Details.Operands[idx].ShiftOperation)
-            {
-                case ArmShiftOperation.ARM_SFT_LSL:
-                    return rm << Instruction.Details.Operands[idx].ShiftValue;
-                case ArmShiftOperation.ARM_SFT_LSL_REG:
-                    return new CMethodCall(true, "<<", rm, rs);
-                case ArmShiftOperation.ARM_SFT_LSR:
-                    return rm >> Instruction.Details.Operands[idx].ShiftValue;
-                case ArmShiftOperation.ARM_SFT_LSR_REG:
-                    return new CMethodCall(true, ">>", rm, rs);
-                case ArmShiftOperation.ARM_SFT_ASR:
-                    return new CCast(new CType("int"), rm) >> Instruction.Details.Operands[idx].ShiftValue;
-                case ArmShiftOperation.ARM_SFT_ASR_REG:
-                    return new CMethodCall(true, ">>", new CCast(new CType("int"), rm), rs);
                 default:
                     throw new NotImplementedException("Unimplemented shift!");
             }
@@ -386,7 +351,29 @@ namespace LibDerailer.CodeGraph.Nodes
                             break;
                         }
                         else
-                            throw new NotImplementedException("Unimplemented instruction!");
+                        {
+                            IRExpression disp = GetIROperand(context, 2);
+                            switch (Instruction.Details.Operands[1].ShiftOperation)
+                            {
+                                case ArmShiftOperation.ARM_SFT_LSL:
+                                    disp = disp.ShiftLeft(Instruction.Details.Operands[1].ShiftValue);
+                                    break;
+                                case ArmShiftOperation.ARM_SFT_LSR:
+                                    disp = disp.ShiftRightLogical(Instruction.Details.Operands[1].ShiftValue);
+                                    break;
+                                case ArmShiftOperation.ARM_SFT_ASR:
+                                    disp = disp.ShiftRightArithmetic(Instruction.Details.Operands[1].ShiftValue);
+                                    break;
+                                default:
+                                    throw new NotImplementedException("Unimplemented shift!");
+                            }
+
+                            var deref = new IRDerefExpression(type,
+                                (GetIROperand(context, 1) + disp).Cast(type.GetPointer()));
+                            yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
+                                deref.Cast(IRPrimitive.U32));
+                            break;
+                        }
                     }
                 }
                 case ArmInstructionId.ARM_INS_STR:
@@ -449,7 +436,29 @@ namespace LibDerailer.CodeGraph.Nodes
                             break;
                         }
                         else
-                            throw new NotImplementedException("Unimplemented instruction!");
+                        {
+                            IRExpression disp = GetIROperand(context, 2);
+                            switch (Instruction.Details.Operands[1].ShiftOperation)
+                            {
+                                case ArmShiftOperation.ARM_SFT_LSL:
+                                    disp = disp.ShiftLeft(Instruction.Details.Operands[1].ShiftValue);
+                                    break;
+                                case ArmShiftOperation.ARM_SFT_LSR:
+                                    disp = disp.ShiftRightLogical(Instruction.Details.Operands[1].ShiftValue);
+                                    break;
+                                case ArmShiftOperation.ARM_SFT_ASR:
+                                    disp = disp.ShiftRightArithmetic(Instruction.Details.Operands[1].ShiftValue);
+                                    break;
+                                default:
+                                    throw new NotImplementedException("Unimplemented shift!");
+                            }
+
+                            yield return new IRAssignment(parentBlock,
+                                new IRDerefExpression(type,
+                                    (GetIROperand(context, 1) + disp).Cast(type.GetPointer())),
+                                GetIROperand(context, 0).Cast(type));
+                            break;
+                        }
                     }
                 }
                 case ArmInstructionId.ARM_INS_BL:

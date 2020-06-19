@@ -13,8 +13,8 @@ namespace LibDerailer.CodeGraph.Nodes
 {
     public class LongAdd : Instruction
     {
-        public LongAdd(Variable dstLo, Variable dstHi, Variable opALo, Variable opAHi, Operand opBLo, Operand opBHi)
-            : base(ArmConditionCode.ARM_CC_AL)
+        public LongAdd(uint address, Variable dstLo, Variable dstHi, Variable opALo, Variable opAHi, Operand opBLo, Operand opBHi)
+            : base(address, ArmConditionCode.ARM_CC_AL)
         {
             Operands.Add((true, dstLo));
             Operands.Add((true, dstHi));

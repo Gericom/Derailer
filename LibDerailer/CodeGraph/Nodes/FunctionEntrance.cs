@@ -5,7 +5,7 @@ namespace LibDerailer.CodeGraph.Nodes
     public class FunctionEntrance : Instruction
     {
         public FunctionEntrance(Function func, Variable[] regVars)
-            : base(ArmConditionCode.ARM_CC_AL)
+            : base(func.Address, ArmConditionCode.ARM_CC_AL)
         {
             VariableDefs.Add(regVars[0]);
             VariableDefs.Add(regVars[1]);

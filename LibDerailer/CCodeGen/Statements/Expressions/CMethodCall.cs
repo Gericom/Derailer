@@ -137,7 +137,7 @@ namespace LibDerailer.CCodeGen.Statements.Expressions
                 (Arguments[0] as CMethodCall)?.Name != "." &&
                 (Arguments[0] as CMethodCall)?.IsOperator == true)
             {
-                arg0.Prepend(new CToken(CTokenType.OpenParen, "("));
+                arg0.Insert(0, new CToken(CTokenType.OpenParen, "("));
                 arg0.Add(new CToken(CTokenType.CloseParen, ")"));
             }
             var arg1 = Arguments[1].ToTokens().ToList();
@@ -147,7 +147,7 @@ namespace LibDerailer.CCodeGen.Statements.Expressions
                 (Arguments[1] as CMethodCall)?.Name != "." &&
                 (Arguments[1] as CMethodCall)?.IsOperator == true)
             {
-                arg1.Prepend(new CToken(CTokenType.OpenParen, "("));
+                arg1.Insert(0, new CToken(CTokenType.OpenParen, "("));
                 arg1.Add(new CToken(CTokenType.CloseParen, ")"));
             }
 
