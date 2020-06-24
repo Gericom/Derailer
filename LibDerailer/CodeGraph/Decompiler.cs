@@ -902,7 +902,7 @@ namespace LibDerailer.CodeGraph
             File.WriteAllText(@"basicblocks.txt", func.BasicBlockGraphToDot());
             File.WriteAllText(@"defuse.txt", func.DefUseGraphToDot());
             var u32    = new CType("u32");
-            var method = new CMethod(hasReturnValue ? u32 : new CType(), "func");
+            var method = new CMethod(hasReturnValue ? u32 : new CType(), irContext.ProgramContext?.TryGetSymbol(dataAddress) ?? "func");
             if (func.StackVariables.Any(v => v.Address >= 0))
             {
                 method.Parameters.Add((irContext.VariableMapping[regVars[0]].Type.ToCType(),

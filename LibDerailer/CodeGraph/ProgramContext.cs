@@ -23,5 +23,10 @@ namespace LibDerailer.CodeGraph
 
             return symbol;
         }
+
+        public string GetMethodName(uint address)
+        {
+            return TryGetSymbol(address) ?? $"sub_{address:X08}";
+        }
     }
 }

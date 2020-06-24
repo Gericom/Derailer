@@ -54,7 +54,7 @@ namespace LibDerailer.CCodeGen.Statements
             yield return new CToken(CTokenType.CloseParen, ")");
             yield return new CToken(CTokenType.Whitespace, "\n");
 
-            foreach (var tok in AstUtil.Indent(Body.ToTokens()))
+            foreach (var tok in Body.ToTokens())
                 yield return tok;
         }
     }
