@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using Gee.External.Capstone;
 using Gee.External.Capstone.Arm;
@@ -16,8 +17,10 @@ namespace LibDerailer.CodeGraph.Nodes
     {
         public ArmInstruction Instruction { get; }
 
+        private List<int> OpMapping { get; } = new List<int>();
+
         public ArmMachineInstruction(ArmInstruction instruction, Variable[] regVars)
-            : base((uint)instruction.Address, instruction.Details.ConditionCode)
+            : base((uint) instruction.Address, instruction.Details.ConditionCode)
         {
             Instruction = instruction;
             var defs = instruction.Details.AllWrittenRegisters
@@ -40,6 +43,11 @@ namespace LibDerailer.CodeGraph.Nodes
                 instruction.Id == ArmInstructionId.ARM_INS_BX)
                 uses = uses.Append(regVars[0]).Append(regVars[1]).Append(regVars[2]).Append(regVars[3])
                     .Append(regVars[13]);
+            if (instruction.Details.Operands.Length >= 3 &&
+                instruction.Details.Operands[2].Type == ArmOperandType.Register &&
+                instruction.Details.Operands[2].ShiftOperation >= ArmShiftOperation.ARM_SFT_LSL_REG)
+                uses = uses.Append(
+                    regVars[ArmUtil.GetRegisterNumber(instruction.Details.Operands[2].ShiftRegister.Id)]);
             VariableUses.UnionWith(uses);
 
             for (int i = 0; i < Instruction.Details.Operands.Length; i++)
@@ -48,24 +56,37 @@ namespace LibDerailer.CodeGraph.Nodes
                 switch (op.Type)
                 {
                     case ArmOperandType.Register:
-                        if (op.AccessType == OperandAccessType.Write ||
-                            (Instruction.DisassembleMode == ArmDisassembleMode.Thumb &&
-                             op.AccessType == (OperandAccessType.Read | OperandAccessType.Write) && i == 0))
+                        if (Instruction.DisassembleMode == ArmDisassembleMode.Thumb &&
+                            op.AccessType == (OperandAccessType.Read | OperandAccessType.Write) && i == 0)
                         {
                             Operands.Add((true, VariableDefs.FirstOrDefault(v =>
                                 v.Location == VariableLocation.Register &&
                                 v.Address == ArmUtil.GetRegisterNumber(op.Register.Id))));
+                            OpMapping.Add(i);
+                            Operands.Add((false, VariableUses.FirstOrDefault(v =>
+                                v.Location == VariableLocation.Register &&
+                                v.Address == ArmUtil.GetRegisterNumber(op.Register.Id))));
+                            OpMapping.Add(i);
+                        }
+                        else if (op.AccessType == OperandAccessType.Write)
+                        {
+                            Operands.Add((true, VariableDefs.FirstOrDefault(v =>
+                                v.Location == VariableLocation.Register &&
+                                v.Address == ArmUtil.GetRegisterNumber(op.Register.Id))));
+                            OpMapping.Add(i);
                         }
                         else
                         {
                             Operands.Add((false, VariableUses.FirstOrDefault(v =>
                                 v.Location == VariableLocation.Register &&
                                 v.Address == ArmUtil.GetRegisterNumber(op.Register.Id))));
+                            OpMapping.Add(i);
                             if (op.ShiftOperation >= ArmShiftOperation.ARM_SFT_LSL_REG)
                             {
                                 Operands.Add((false, VariableUses.First(v =>
                                     v.Location == VariableLocation.Register &&
                                     v.Address == ArmUtil.GetRegisterNumber(op.ShiftRegister.Id))));
+                                OpMapping.Add(i);
                             }
                         }
 
@@ -74,22 +95,32 @@ namespace LibDerailer.CodeGraph.Nodes
                         Operands.Add((false, VariableUses.First(v =>
                             v.Location == VariableLocation.Register &&
                             v.Address == ArmUtil.GetRegisterNumber(op.Memory.Base.Id))));
+                        OpMapping.Add(i);
                         if (op.Memory.Index == null)
                             Operands.Add((false, new Constant((uint) op.Memory.Displacement)));
                         else
                             Operands.Add((false, VariableUses.First(v =>
                                 v.Location == VariableLocation.Register &&
                                 v.Address == ArmUtil.GetRegisterNumber(op.Memory.Index.Id))));
+
+                        OpMapping.Add(i);
                         if (instruction.Details.WriteBack)
+                        {
                             Operands.Add((true, VariableDefs.First(v =>
                                 v.Location == VariableLocation.Register &&
                                 v.Address == ArmUtil.GetRegisterNumber(op.Memory.Base.Id))));
+
+                            OpMapping.Add(i);
+                        }
+
                         break;
                     case ArmOperandType.Immediate:
                         Operands.Add((false, new Constant((uint) op.Immediate)));
+                        OpMapping.Add(i);
                         break;
                     default:
                         Operands.Add((false, null));
+                        OpMapping.Add(i);
                         break;
                 }
             }
@@ -115,32 +146,33 @@ namespace LibDerailer.CodeGraph.Nodes
 
         private IRExpression GetIRSecondOperand(IRContext context, int idx)
         {
-            if (Instruction.Details.Operands[idx].Type == ArmOperandType.Immediate)
-                return (uint) Instruction.Details.Operands[idx].Immediate;
+            var op = Instruction.Details.Operands[OpMapping[idx]];
+            if (op.Type == ArmOperandType.Immediate)
+                return (uint) op.Immediate;
 
             var rm = context.VariableMapping[(Variable) Operands[idx].op];
 
-            if (Instruction.Details.Operands[idx].ShiftOperation == ArmShiftOperation.Invalid ||
-                (Instruction.Details.Operands[idx].ShiftOperation == ArmShiftOperation.ARM_SFT_LSL &&
-                 Instruction.Details.Operands[idx].ShiftValue == 0))
+            if (op.ShiftOperation == ArmShiftOperation.Invalid ||
+                (op.ShiftOperation == ArmShiftOperation.ARM_SFT_LSL &&
+                 op.ShiftValue == 0))
                 return rm;
 
             IRVariable rs = null;
-            if (Instruction.Details.Operands[idx].ShiftOperation >= ArmShiftOperation.ARM_SFT_LSL_REG)
+            if (op.ShiftOperation >= ArmShiftOperation.ARM_SFT_LSL_REG)
                 rs = context.VariableMapping[(Variable) Operands[idx + 1].op];
 
-            switch (Instruction.Details.Operands[idx].ShiftOperation)
+            switch (op.ShiftOperation)
             {
                 case ArmShiftOperation.ARM_SFT_LSL:
-                    return rm.ShiftLeft(Instruction.Details.Operands[idx].ShiftValue);
+                    return rm.ShiftLeft(op.ShiftValue);
                 case ArmShiftOperation.ARM_SFT_LSL_REG:
                     return rm.ShiftLeft(rs);
                 case ArmShiftOperation.ARM_SFT_LSR:
-                    return rm.ShiftRightLogical(Instruction.Details.Operands[idx].ShiftValue);
+                    return rm.ShiftRightLogical(op.ShiftValue);
                 case ArmShiftOperation.ARM_SFT_LSR_REG:
                     return rm.ShiftRightLogical(rs);
                 case ArmShiftOperation.ARM_SFT_ASR:
-                    return rm.ShiftRightArithmetic(Instruction.Details.Operands[idx].ShiftValue);
+                    return rm.ShiftRightArithmetic(op.ShiftValue);
                 case ArmShiftOperation.ARM_SFT_ASR_REG:
                     return rm.ShiftRightArithmetic(rs);
                 default:
@@ -157,13 +189,10 @@ namespace LibDerailer.CodeGraph.Nodes
                 case ArmInstructionId.ARM_INS_ADD:
                     if (Instruction.Details.Operands[0].Register.Id == ArmRegisterId.ARM_REG_PC)
                         yield break;
-                    if (isShortThumb)
-                        yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
-                            GetIROperand(context, 0) + GetIRSecondOperand(context, 1));
-                    else if (Instruction.DisassembleMode == ArmDisassembleMode.Thumb &&
-                             Instruction.Details.Operands.Length == 3 &&
-                             Instruction.Details.Operands[2].Type == ArmOperandType.Immediate &&
-                             Instruction.Details.Operands[2].Immediate == 0)
+                    if (Instruction.DisassembleMode == ArmDisassembleMode.Thumb &&
+                        Instruction.Details.Operands.Length == 3 &&
+                        Instruction.Details.Operands[2].Type == ArmOperandType.Immediate &&
+                        Instruction.Details.Operands[2].Immediate == 0)
                         yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
                             GetIROperand(context, 1));
                     else
@@ -171,48 +200,28 @@ namespace LibDerailer.CodeGraph.Nodes
                             GetIROperand(context, 1) + GetIRSecondOperand(context, 2));
                     break;
                 case ArmInstructionId.ARM_INS_SUB:
-                    if (isShortThumb)
-                        yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
-                            GetIROperand(context, 0) - GetIRSecondOperand(context, 1));
-                    else
-                        yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
-                            GetIROperand(context, 1) - GetIRSecondOperand(context, 2));
+                    yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
+                        GetIROperand(context, 1) - GetIRSecondOperand(context, 2));
                     break;
                 case ArmInstructionId.ARM_INS_RSB:
                     yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
                         GetIRSecondOperand(context, 2) - GetIROperand(context, 1));
                     break;
                 case ArmInstructionId.ARM_INS_AND:
-                    if (isShortThumb)
-                        yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
-                            GetIROperand(context, 0) & GetIRSecondOperand(context, 1));
-                    else
-                        yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
-                            GetIROperand(context, 1) & GetIRSecondOperand(context, 2));
+                    yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
+                        GetIROperand(context, 1) & GetIRSecondOperand(context, 2));
                     break;
                 case ArmInstructionId.ARM_INS_ORR:
-                    if (isShortThumb)
-                        yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
-                            GetIROperand(context, 0) & GetIRSecondOperand(context, 1));
-                    else
-                        yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
-                            GetIROperand(context, 1) | GetIRSecondOperand(context, 2));
+                    yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
+                        GetIROperand(context, 1) | GetIRSecondOperand(context, 2));
                     break;
                 case ArmInstructionId.ARM_INS_EOR:
-                    if (isShortThumb)
-                        yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
-                            GetIROperand(context, 0) ^ GetIRSecondOperand(context, 1));
-                    else
-                        yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
-                            GetIROperand(context, 1) ^ GetIRSecondOperand(context, 2));
+                    yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
+                        GetIROperand(context, 1) ^ GetIRSecondOperand(context, 2));
                     break;
                 case ArmInstructionId.ARM_INS_BIC:
-                    if (isShortThumb)
-                        yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
-                            GetIROperand(context, 0) & ~GetIRSecondOperand(context, 1));
-                    else
-                        yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
-                            GetIROperand(context, 1) & ~GetIRSecondOperand(context, 2));
+                    yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
+                        GetIROperand(context, 1) & ~GetIRSecondOperand(context, 2));
                     break;
                 case ArmInstructionId.ARM_INS_LSL:
                     if (Instruction.DisassembleMode == ArmDisassembleMode.Arm)
@@ -251,12 +260,8 @@ namespace LibDerailer.CodeGraph.Nodes
                         ~GetIRSecondOperand(context, 1));
                     break;
                 case ArmInstructionId.ARM_INS_MUL:
-                    if (isShortThumb)
-                        yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
-                            GetIROperand(context, 0) * GetIRSecondOperand(context, 1));
-                    else
-                        yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
-                            GetIROperand(context, 1) * GetIROperand(context, 2));
+                    yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
+                        GetIROperand(context, 1) * GetIROperand(context, 2));
                     break;
                 case ArmInstructionId.ARM_INS_MLA:
                     yield return new IRAssignment(parentBlock, GetIROperand(context, 0),
@@ -485,6 +490,31 @@ namespace LibDerailer.CodeGraph.Nodes
                                      .First(v => v.Location == VariableLocation.Register && v.Address == 1)]
                                  .Cast(IRPrimitive.S32)).Cast(IRPrimitive.U32));
                     }
+                    else if (symbol == "_ll_mul")
+                    {
+                        var opA = context.VariableMapping[VariableUses
+                                          .First(v => v.Location == VariableLocation.Register && v.Address == 0)]
+                                      .Cast(IRPrimitive.U32).Cast(IRPrimitive.S64) |
+                                  context.VariableMapping[VariableUses
+                                          .First(v => v.Location == VariableLocation.Register && v.Address == 1)]
+                                      .Cast(IRPrimitive.U32).Cast(IRPrimitive.S64).ShiftLeft(32);
+
+                        var opB = context.VariableMapping[VariableUses
+                                          .First(v => v.Location == VariableLocation.Register && v.Address == 2)]
+                                      .Cast(IRPrimitive.U32).Cast(IRPrimitive.S64) |
+                                  context.VariableMapping[VariableUses
+                                          .First(v => v.Location == VariableLocation.Register && v.Address == 3)]
+                                      .Cast(IRPrimitive.U32).Cast(IRPrimitive.S64).ShiftLeft(32);
+
+                        var mulResult = opA * opB;
+
+                        yield return new IRAssignment(parentBlock, context.VariableMapping[VariableDefs
+                                .First(v => v.Location == VariableLocation.Register && v.Address == 0)],
+                            mulResult.Cast(IRPrimitive.U32));
+                        yield return new IRAssignment(parentBlock, context.VariableMapping[VariableDefs
+                                .First(v => v.Location == VariableLocation.Register && v.Address == 1)],
+                            mulResult.ShiftRightArithmetic(32).Cast(IRPrimitive.U32));
+                    }
                     else
                     {
                         yield return new IRAssignment(parentBlock,
@@ -525,7 +555,10 @@ namespace LibDerailer.CodeGraph.Nodes
                     if (Instruction.Details.Operands[0].Register.Id == ArmRegisterId.ARM_REG_SP &&
                         Instruction.Details.WriteBack)
                         break;
-                    goto default;
+                    break;
+                //goto default;
+                case ArmInstructionId.ARM_INS_STM:
+                    break;
                 case ArmInstructionId.ARM_INS_STMDB:
                     if (Instruction.Details.Operands[0].Register.Id == ArmRegisterId.ARM_REG_SP &&
                         Instruction.Details.WriteBack)
@@ -549,6 +582,8 @@ namespace LibDerailer.CodeGraph.Nodes
             {
                 case ArmInstructionId.ARM_INS_AND:
                 case ArmInstructionId.ARM_INS_LSR:
+                case ArmInstructionId.ARM_INS_ASR:
+                case ArmInstructionId.ARM_INS_LSL:
                 case ArmInstructionId.ARM_INS_MOV:
                     switch (condition)
                     {

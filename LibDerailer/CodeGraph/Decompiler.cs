@@ -81,7 +81,7 @@ namespace LibDerailer.CodeGraph
                     }
                 }
 
-                if (block.BlockCondition != ArmConditionCode.Invalid)
+                if (block.BlockCondition != ArmConditionCode.Invalid && block.BlockCondition != ArmConditionCode.ARM_CC_AL)
                     block.BlockConditionInstruction =
                         block.Instructions[0].VariableUseLocs[func.MachineRegisterVariables[16]].First();
             }
@@ -639,6 +639,7 @@ namespace LibDerailer.CodeGraph
                     continue;
                 //find all up to three epilogue instructions in the current block
                 var blockEpInsts = new List<Instruction>();
+                int skippedInstructions = 0;
                 int i            = 0;
                 foreach (var epInst in epilogue.Instructions)
                 {
@@ -657,10 +658,21 @@ namespace LibDerailer.CodeGraph
                     }
 
                     if (i == block.Instructions.Count)
+                    {
+                        if(blockEpInsts.Count == 0 && epInst is ArmMachineInstruction m && m.Instruction.Id == ArmInstructionId.ARM_INS_ADD)
+                        {
+                            //allow to not be able to find the stack adjustment
+                            //the compiler sometimes moves it quite far back
+                            //TODO: I should probably move such instructions back during descheduling?
+                            i = 0;
+                            skippedInstructions++;
+                            continue;
+                        }
                         break;
+                    }
                 }
 
-                if (blockEpInsts.Count != epilogue.Instructions.Count)
+                if (blockEpInsts.Count != epilogue.Instructions.Count - skippedInstructions)
                     throw new Exception("Invalid epilogue");
                 foreach (var epInst in blockEpInsts)
                 {
@@ -900,6 +912,7 @@ namespace LibDerailer.CodeGraph
 
             //debug: output dot
             File.WriteAllText(@"basicblocks.txt", func.BasicBlockGraphToDot());
+            File.WriteAllText(@"basicblocks_ir.txt", irFunc.BasicBlockGraphToDot());
             File.WriteAllText(@"defuse.txt", func.DefUseGraphToDot());
             var u32    = new CType("u32");
             var method = new CMethod(hasReturnValue ? u32 : new CType(), irContext.ProgramContext?.TryGetSymbol(dataAddress) ?? "func");
@@ -1506,6 +1519,15 @@ namespace LibDerailer.CodeGraph
                         .Where(inst =>
                             (inst is ArmMachineInstruction || inst is LoadConstant) &&
                             inst.Condition == instruction.Condition &&
+                            inst.VariableUses.Contains(func.MachineRegisterVariables[16]) &&
+                            inst.VariableUseLocs[func.MachineRegisterVariables[16]].First() ==
+                            instruction.VariableUseLocs[func.MachineRegisterVariables[16]].First())
+                        .ToArray();
+                    var revC = ArmUtil.GetOppositeCondition(instruction.Condition);
+                    var revCInsts = block.Instructions
+                        .Where(inst =>
+                            (inst is ArmMachineInstruction || inst is LoadConstant) &&
+                            inst.Condition == revC &&
                             inst.VariableUses.Contains(func.MachineRegisterVariables[16]) &&
                             inst.VariableUseLocs[func.MachineRegisterVariables[16]].First() ==
                             instruction.VariableUseLocs[func.MachineRegisterVariables[16]].First())

@@ -149,7 +149,19 @@ namespace LibDerailer.Analysis
                         if (elseBlock.Instructions.Count != 1)
                             continue;
 
-                        throw new NotImplementedException();
+                        block.BlockJump.Condition &= elseBlock.BlockJump.Condition.InverseCondition();
+
+                        int ifIdx = block.Successors.IndexOf(elseBlock);
+                        var next  = elseBlock.Successors.First(s => s != ifBlock);
+                        if (block.BlockJump.Destination == block.Successors[ifIdx])
+                            block.BlockJump.Destination = next;
+                        block.Successors[ifIdx] = next;
+                        next.Predecessors.Remove(elseBlock);
+                        next.Predecessors.Add(block);
+                        ifBlock.Predecessors.Remove(elseBlock);
+                        elseBlock.Successors.Clear();
+                        elseBlock.Instructions.Clear();
+                        i--;
                         change = true;
                     }
                 }

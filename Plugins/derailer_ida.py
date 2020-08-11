@@ -237,6 +237,7 @@ class DecompileDebugHandler(idaapi.action_handler_t):
 
 	def activate(self, ctx):
 		Diagnostics.Debugger.Launch()
+		Diagnostics.Debugger.Break()
 		decompile_window(current_function())
 
 	def update(self, ctx):
